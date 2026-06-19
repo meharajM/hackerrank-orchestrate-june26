@@ -5,7 +5,7 @@ Tracks aggregated pricing across a pipeline run.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Protocol, runtime_checkable
 
 
 @dataclass(frozen=True)
@@ -54,6 +54,23 @@ def get_pricing(model_name: str) -> ModelPricing:
         if key in lower:
             return pricing
     return FREE_PRICING
+
+
+@runtime_checkable
+class CostRecorder(Protocol):
+    """Abstract sink for token and cost accounting."""
+
+    def record(
+        self,
+        model_name: str,
+        input_tokens: int,
+        output_tokens: int,
+        cached: bool = False,
+    ) -> float:
+        ...
+
+    def summary(self) -> dict:
+        ...
 
 
 @dataclass
@@ -109,3 +126,14 @@ class CostTracker:
             "estimated_cost_usd": round(self.estimated_cost_usd, 6),
             "breakdown": self._breakdown,
         }
+
+
+__all__ = [
+    "ModelPricing",
+    "CostRecorder",
+    "CostTracker",
+    "get_pricing",
+    "FREE_PRICING",
+    "GEMINI_FLASH_PRICING",
+    "GEMINI_THINKING_PRICING",
+]

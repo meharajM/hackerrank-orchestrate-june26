@@ -10,7 +10,7 @@ import time
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Protocol, runtime_checkable
 
 
 @dataclass
@@ -26,6 +26,20 @@ class TelemetryEvent:
     cached: bool = False
     escalated: bool = False
     error: Optional[str] = None
+
+
+@runtime_checkable
+class EventSink(Protocol):
+    """Abstract sink for telemetry events."""
+
+    def record(self, event: TelemetryEvent) -> None:
+        ...
+
+    def summary(self) -> dict:
+        ...
+
+    def flush(self, path: Optional[Path] = None) -> Path:
+        ...
 
 
 class EventLogger:
@@ -93,3 +107,10 @@ class EventLogger:
             "escalated_calls": escalated_count,
             "error_calls": error_count,
         }
+
+
+__all__ = [
+    "TelemetryEvent",
+    "EventSink",
+    "EventLogger",
+]

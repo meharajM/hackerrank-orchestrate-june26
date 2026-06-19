@@ -82,6 +82,12 @@ claims.csv Row
 - **Requirements repository interface**: evidence lookup now depends on a `RequirementsRepository` protocol rather than directly binding orchestration to a local file loader.
 - **File-backed defaults remain**: `FileHistoryRepository` and `FileRequirementsRepository` preserve current repo behavior while making hosted backends and test doubles injectable.
 
+### 2.6 Cache And Telemetry Providers (`src/telemetry/*`)
+- **Cache backend interface**: model adapters and claim processing can now depend on a `CacheBackend` protocol rather than directly on the file-backed `ResponseCache`.
+- **Event sink interface**: per-claim telemetry emission can target any `EventSink`, with `EventLogger` remaining the current in-memory and JSON-flush implementation.
+- **Cost recorder interface**: token and spend accounting now hangs off a `CostRecorder` protocol so hosted runtimes can swap the default `CostTracker` for external accounting sinks.
+- **Injection path is active**: `build_claim_processing_context(...)` now accepts injected cache, telemetry, and cost components while preserving the existing local defaults.
+
 ---
 
 ## 3. Deep-Dive Code Review: Gaps & Identified Risks
@@ -124,5 +130,6 @@ To address the latency, cost, and reliability gaps, the next phase will operatio
 - The first modularization slice is now in place: single-claim processing no longer lives only inside the CLI entrypoint; it is available as an importable application service.
 - Packaging friction is lower than before: `evaluation/metrics.py` no longer mutates `sys.path`, and standalone scripts use fallback bootstrapping only when needed.
 - Claim processing is less file-bound than before: the service layer now depends on repository interfaces for history and evidence requirements rather than concrete CSV manager classes.
+- Runtime infrastructure is less local-only than before: cache, telemetry, and cost tracking can now be injected behind protocols instead of being hard-coded file-backed classes.
 - The main blocker is no longer basic plumbing; it is prediction quality. The checked-in Strategy B evaluation report currently shows `0/20` exact matches on the labeled sample set.
 - The highest-leverage next work is in prompt quality, mismatch handling, and adjudication quality, not more infrastructure expansion.

@@ -19,9 +19,9 @@ from .pipeline.strategy_single_pass import run_single_pass_pipeline
 from .pipeline.strategy_staged import run_staged_pipeline
 from .requirements import FileRequirementsRepository, RequirementsRepository
 from .schemas import ClaimInput, ClaimOutput, EvidenceRequirement, UserHistory
-from .telemetry.caching import ResponseCache
-from .telemetry.costing import CostTracker
-from .telemetry.events import EventLogger, TelemetryEvent
+from .telemetry.caching import CacheBackend, ResponseCache
+from .telemetry.costing import CostRecorder, CostTracker
+from .telemetry.events import EventLogger, EventSink, TelemetryEvent
 
 StrategyName = Literal["A", "B", "C"]
 ModelName = Literal["gemini", "ollama", "mock"]
@@ -37,9 +37,9 @@ class ClaimProcessingContext:
     requirements_repository: RequirementsRepository
     strategy: StrategyName = "B"
     escalation_model: Optional[ModelAdapter] = None
-    cache: Optional[ResponseCache] = None
-    event_logger: Optional[EventLogger] = None
-    cost_tracker: Optional[CostTracker] = None
+    cache: Optional[CacheBackend] = None
+    event_logger: Optional[EventSink] = None
+    cost_tracker: Optional[CostRecorder] = None
 
 
 @dataclass
@@ -84,6 +84,9 @@ def build_claim_processing_context(
     allow_model_fallback: bool = True,
     history_repository: Optional[HistoryRepository] = None,
     requirements_repository: Optional[RequirementsRepository] = None,
+    cache: Optional[CacheBackend] = None,
+    event_logger: Optional[EventSink] = None,
+    cost_tracker: Optional[CostRecorder] = None,
 ) -> ClaimProcessingContext:
     """Build a reusable processing context for CLI, batch, or service usage."""
     config = config or get_config()
@@ -92,9 +95,9 @@ def build_claim_processing_context(
     requirements_repository = requirements_repository or FileRequirementsRepository(
         config.evidence_requirements_csv
     )
-    cache = ResponseCache(cache_dir=cache_dir, enabled=cache_enabled)
-    event_logger = EventLogger()
-    cost_tracker = CostTracker()
+    cache = cache or ResponseCache(cache_dir=cache_dir, enabled=cache_enabled)
+    event_logger = event_logger or EventLogger()
+    cost_tracker = cost_tracker or CostTracker()
 
     model = build_model_adapter(model_name, config, allow_fallback=allow_model_fallback)
     model.wire_cache(cache)

@@ -10,9 +10,40 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Protocol, runtime_checkable
 
 logger = logging.getLogger(__name__)
+
+
+@runtime_checkable
+class CacheBackend(Protocol):
+    """Abstract cache interface for model responses."""
+
+    @property
+    def hits(self) -> int:
+        ...
+
+    @property
+    def misses(self) -> int:
+        ...
+
+    def make_key(
+        self,
+        model_name: str,
+        prompt: str,
+        system_prompt: str = "",
+        image_paths: Optional[list[Path]] = None,
+    ) -> str:
+        ...
+
+    def get(self, cache_key: str) -> Optional[str]:
+        ...
+
+    def put(self, cache_key: str, response: str) -> None:
+        ...
+
+    def summary(self) -> dict:
+        ...
 
 
 class ResponseCache:
@@ -144,3 +175,9 @@ class ResponseCache:
             "hit_rate": round(self._hits / total, 4) if total > 0 else 0.0,
             "cache_dir": str(self._cache_dir),
         }
+
+
+__all__ = [
+    "CacheBackend",
+    "ResponseCache",
+]

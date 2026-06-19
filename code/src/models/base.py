@@ -9,16 +9,16 @@ from pathlib import Path
 from typing import Any, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ..telemetry.caching import ResponseCache
+    from ..telemetry.caching import CacheBackend
 
 
 class ModelAdapter(ABC):
     """Abstract base for model adapters."""
 
-    _cache: Optional["ResponseCache"] = None
+    _cache: Optional["CacheBackend"] = None
 
-    def wire_cache(self, cache: "ResponseCache") -> None:
-        """Attach a ResponseCache so cached_text_call / cached_multimodal_call work."""
+    def wire_cache(self, cache: "CacheBackend") -> None:
+        """Attach a cache backend so cached_text_call / cached_multimodal_call work."""
         self._cache = cache
 
     # ── Public cached entry-points ───────────────────────────────────────

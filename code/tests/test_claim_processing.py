@@ -1,7 +1,10 @@
+from pathlib import Path
+
 from src import build_claim_processing_context, process_claim, process_claim_batch
 from src.config import get_config
 from src.csv_io import read_claims
 from src.schemas import EvidenceRequirement, UserHistory
+from src.telemetry.events import TelemetryEvent
 
 
 class StubHistoryRepository:
@@ -26,6 +29,87 @@ class StubRequirementsRepository:
     ) -> list[EvidenceRequirement]:
         self.requests.append((claim_object, issue_family))
         return self.requirements
+
+
+class StubCacheBackend:
+    def __init__(self):
+        self._hits = 0
+        self._misses = 0
+        self.get_calls = 0
+        self.put_calls = 0
+        self.store: dict[str, str] = {}
+
+    @property
+    def hits(self) -> int:
+        return self._hits
+
+    @property
+    def misses(self) -> int:
+        return self._misses
+
+    def make_key(
+        self,
+        model_name: str,
+        prompt: str,
+        system_prompt: str = "",
+        image_paths: list[Path] | None = None,
+    ) -> str:
+        path_names = tuple(str(path) for path in image_paths or [])
+        return repr((model_name, prompt, system_prompt, path_names))
+
+    def get(self, cache_key: str) -> str | None:
+        self.get_calls += 1
+        if cache_key in self.store:
+            self._hits += 1
+            return self.store[cache_key]
+        self._misses += 1
+        return None
+
+    def put(self, cache_key: str, response: str) -> None:
+        self.put_calls += 1
+        self.store[cache_key] = response
+
+    def summary(self) -> dict:
+        return {"hits": self._hits, "misses": self._misses}
+
+
+class StubEventSink:
+    def __init__(self):
+        self.events: list[TelemetryEvent] = []
+
+    def record(self, event: TelemetryEvent) -> None:
+        self.events.append(event)
+
+    def summary(self) -> dict:
+        return {"total_events": len(self.events)}
+
+    def flush(self, path=None):
+        return Path(path or "stub-events.json")
+
+
+class StubCostRecorder:
+    def __init__(self):
+        self.records: list[dict] = []
+
+    def record(
+        self,
+        model_name: str,
+        input_tokens: int,
+        output_tokens: int,
+        cached: bool = False,
+    ) -> float:
+        self.records.append(
+            {
+                "model_name": model_name,
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "cached": cached,
+            }
+        )
+        return 0.0
+
+    def summary(self) -> dict:
+        return {"total_calls": len(self.records)}
 
 
 def test_process_claim_from_public_api():
@@ -106,3 +190,30 @@ def test_process_claim_accepts_injected_repositories():
     assert requirements_repository.requests == [(claim.claim_object, None)]
     assert result.user_history == history
     assert result.evidence_requirements == requirements
+
+
+def test_process_claim_accepts_injected_cache_and_telemetry_providers():
+    """The application service should honor injected cache and telemetry implementations."""
+    config = get_config()
+    claim = read_claims(config.sample_claims_csv)[0]
+    cache = StubCacheBackend()
+    event_sink = StubEventSink()
+    cost_recorder = StubCostRecorder()
+
+    context = build_claim_processing_context(
+        config=config,
+        model_name="mock",
+        strategy="B",
+        cache_enabled=True,
+        cache=cache,
+        event_logger=event_sink,
+        cost_tracker=cost_recorder,
+    )
+
+    result = process_claim(claim, context)
+
+    assert result.event is not None
+    assert event_sink.events and event_sink.events[0].user_id == claim.user_id
+    assert cache.get_calls > 0
+    assert cache.put_calls > 0
+    assert cost_recorder.records
