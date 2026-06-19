@@ -4,6 +4,10 @@
 
 Create the non-negotiable foundation so every later phase builds on strict contracts instead of ad hoc scripts.
 
+## Status
+
+Complete. The foundation smoke run and the contract tests both passed after the Phase 1 implementation was validated.
+
 ## Agent Mission
 
 Build the Python project skeleton, schema layer, data loaders, and smoke path so later coding agents can work without rediscovering repo constraints.

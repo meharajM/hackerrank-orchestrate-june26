@@ -179,6 +179,12 @@ Stage 3 is conditional. It must not run on every row by default.
 | 5 | Optimize for scale, latency, and cost | Full test-set throughput rehearsal | [plans/phase-05-scale-and-optimization.md](/Users/meharaj/hackerrank-orchestrate-june26/plans/phase-05-scale-and-optimization.md) |
 | 6 | Freeze, validate, and package the final system | Submission-grade artifacts and dry-run checklist | [plans/phase-06-finalization.md](/Users/meharaj/hackerrank-orchestrate-june26/plans/phase-06-finalization.md) |
 
+## Phase Progress
+
+1. Phase 1 is complete.
+2. Validation passed with `.venv/bin/python -m pytest code/tests`.
+3. Smoke output generation passed for `dataset/sample_claims.csv` using the Phase 1 placeholder path.
+
 ## Execution Rules
 
 1. Every phase must end with a written verification note and a machine-verifiable output.
