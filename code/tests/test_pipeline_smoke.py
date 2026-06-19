@@ -4,6 +4,8 @@ Smoke tests for the full pipeline run and path resolutions.
 from __future__ import annotations
 
 import csv
+import importlib.util
+from pathlib import Path
 
 from src.config import get_config
 from src.csv_io import read_claims, write_output
@@ -11,6 +13,12 @@ from src.image_io import resolve_all_image_paths
 from src.models import MockAdapter
 from src.pipeline.reviewer import review_claim
 from src.schemas import OUTPUT_COLUMNS
+
+_MAIN_PATH = Path(__file__).resolve().parent.parent / "main.py"
+_MAIN_SPEC = importlib.util.spec_from_file_location("repo_main", _MAIN_PATH)
+repo_main = importlib.util.module_from_spec(_MAIN_SPEC)
+assert _MAIN_SPEC.loader is not None
+_MAIN_SPEC.loader.exec_module(repo_main)
 
 
 def test_resolve_paths_for_all_rows():
@@ -66,3 +74,43 @@ def test_smoke_output_has_exact_columns(tmp_path):
     with output_path.open(newline="", encoding="utf-8") as handle:
         reader = csv.DictReader(handle)
         assert reader.fieldnames == OUTPUT_COLUMNS
+
+
+def test_resume_identity_uses_full_claim_row_not_just_user_id(tmp_path):
+    """Rows from repeated users in claims.csv must still be processed independently."""
+    row_a = {
+        "user_id": "user_045",
+        "claim_object": "car",
+        "image_paths": "images/test/case_045/img_1.jpg",
+        "user_claim": "Rear bumper dent after parking impact.",
+    }
+    row_b = {
+        "user_id": "user_045",
+        "claim_object": "car",
+        "image_paths": "images/test/case_046/img_1.jpg",
+        "user_claim": "Front bumper scratch from another incident.",
+    }
+
+    output_path = tmp_path / "resume_output.csv"
+    with output_path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=OUTPUT_COLUMNS, quoting=csv.QUOTE_ALL)
+        writer.writeheader()
+        writer.writerow(
+            {
+                **row_a,
+                "evidence_standard_met": "true",
+                "evidence_standard_met_reason": "ok",
+                "risk_flags": "none",
+                "issue_type": "dent",
+                "object_part": "rear_bumper",
+                "claim_status": "supported",
+                "claim_status_justification": "ok",
+                "supporting_image_ids": "img_1",
+                "valid_image": "true",
+                "severity": "low",
+            }
+        )
+
+    completed = repo_main._load_completed_claim_keys(output_path)
+    assert repo_main._claim_identity(row_a) in completed
+    assert repo_main._claim_identity(row_b) not in completed

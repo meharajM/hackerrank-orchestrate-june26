@@ -54,27 +54,24 @@ class GeminiAdapter(ModelAdapter):
         client = self._get_client()
         from google.genai import types
 
-        contents = []
+        contents = [types.Content(
+            role="user",
+            parts=[types.Part.from_text(text=prompt)]
+        )]
+
+        config_kwargs = {
+            "temperature": 0.1,
+            "max_output_tokens": 4096,
+        }
         if system_prompt:
-            contents.append(types.Content(
-                role="user",
-                parts=[types.Part.from_text(text=system_prompt + "\n\n" + prompt)]
-            ))
-        else:
-            contents.append(types.Content(
-                role="user",
-                parts=[types.Part.from_text(text=prompt)]
-            ))
+            config_kwargs["system_instruction"] = system_prompt
 
         for attempt in range(self._max_retries):
             try:
                 response = client.models.generate_content(
                     model=self._model_name,
                     contents=contents,
-                    config=types.GenerateContentConfig(
-                        temperature=0.1,
-                        max_output_tokens=4096,
-                    ),
+                    config=types.GenerateContentConfig(**config_kwargs),
                 )
                 self._call_count += 1
                 if hasattr(response, 'usage_metadata') and response.usage_metadata:
@@ -107,11 +104,6 @@ class GeminiAdapter(ModelAdapter):
 
         parts = []
 
-        # Add system prompt as prefix if provided
-        full_prompt = prompt
-        if system_prompt:
-            full_prompt = system_prompt + "\n\n" + prompt
-
         # Add images first
         for img_path in image_paths:
             if img_path.exists():
@@ -135,19 +127,23 @@ class GeminiAdapter(ModelAdapter):
                 parts.append(types.Part.from_text(text=f"[Image {img_path.stem} not found]"))
 
         # Add prompt text after images
-        parts.append(types.Part.from_text(text=full_prompt))
+        parts.append(types.Part.from_text(text=prompt))
 
         contents = [types.Content(role="user", parts=parts)]
+
+        config_kwargs = {
+            "temperature": 0.1,
+            "max_output_tokens": 4096,
+        }
+        if system_prompt:
+            config_kwargs["system_instruction"] = system_prompt
 
         for attempt in range(self._max_retries):
             try:
                 response = client.models.generate_content(
                     model=self._model_name,
                     contents=contents,
-                    config=types.GenerateContentConfig(
-                        temperature=0.1,
-                        max_output_tokens=4096,
-                    ),
+                    config=types.GenerateContentConfig(**config_kwargs),
                 )
                 self._call_count += 1
                 if hasattr(response, 'usage_metadata') and response.usage_metadata:

@@ -1,5 +1,21 @@
 # Phase 4: Adjudication And Strategy Portfolio
 
+## Code Review Fixes (Slice 4.0)
+
+Before executing the core adjudication and strategy implementation, the following concerns from Phase 1-3 review must be addressed:
+
+1. **Remove hardcoded absolute path fallbacks**:
+   - Locate and delete any absolute path fallback strings like `/Users/meharaj/...` in `code/src/pipeline/claim_parser.py` (L22) and `code/src/pipeline/image_reviewer.py` (L52).
+2. **Make error fallback conservative instead of optimistic in `image_reviewer.py`**:
+   - In `image_reviewer.py` exception handling, set default values to: `object_visible=False`, `relevant_part_visible=False`, `issue_observed="unknown"`, `issue_matches_claim=False`, and `part_seen="unknown"`.
+3. **Expose Ollama adapter in `--model` CLI choices**:
+   - In `code/main.py` and `code/evaluation/main.py`, add `"ollama"` to the model `choices` argument.
+4. **Extract shared JSON cleaning utility**:
+   - Create `code/src/utils/json_utils.py` with `clean_and_load_json(text: str) -> dict` to centralize markdown code fence removal, JSON brace extraction, and parsing.
+   - Replace local `_clean_and_load_json` copies in `claim_parser.py`, `image_reviewer.py`, and `reviewer.py` with imports of the shared utility.
+5. **Use SDK `system_instruction` in GeminiAdapter**:
+   - In `code/src/models/gemini_adapter.py`, pass system prompt using `config=types.GenerateContentConfig(system_instruction=system_prompt, ...)` instead of prompt concatenation.
+
 ## Goal
 
 Turn intermediate observations into final submission rows and build the strategy portfolio that competes on quality, not just simplicity.
@@ -26,9 +42,15 @@ Intermediate observations are necessary but not sufficient. The repo is graded o
 4. `code/src/pipeline/strategy_staged.py`
 5. `code/src/pipeline/strategy_escalation.py`
 6. `code/src/utils/enums.py`
-7. `code/src/models/gemini_adapter.py` only if Stage 3 needs adapter changes beyond Phase 3
+7. `code/src/models/gemini_adapter.py`
 8. `code/tests/test_adjudication.py`
 9. `code/evaluation/evaluation_report.md`
+10. `code/src/utils/json_utils.py` (New JSON utility)
+11. `code/src/pipeline/claim_parser.py` (Remove hardcoded path / use JSON utility)
+12. `code/src/pipeline/image_reviewer.py` (Remove hardcoded path / use JSON utility / conservative fallback)
+13. `code/src/pipeline/reviewer.py` (Use JSON utility)
+14. `code/main.py` (Expose Ollama CLI option)
+15. `code/evaluation/main.py` (Expose Ollama CLI option)
 
 ## Python Stack For This Phase
 
@@ -114,6 +136,14 @@ Phase 4 is complete only if all of the following are true:
 3. Allow interpretability to matter, but not enough to choose a weaker strategy when the metric gap is real.
 
 ## Slices
+
+### Slice 4.0: Code Review Fixes
+
+Scope:
+Address the 5 identified P1/P2 code review concerns (remove absolute paths, conservative fallback, Ollama CLI option, shared JSON utility, GeminiAdapter system_instruction).
+
+Verification:
+All code runs successfully, tests continue to pass, and CLI supports ollama.
 
 ### Slice 4.1: Aggregation layer
 

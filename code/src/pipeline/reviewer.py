@@ -28,6 +28,7 @@ from ..schemas import (
     serialize_risk_flags,
     serialize_image_ids,
 )
+from ..utils.json_utils import clean_and_load_json
 from ..image_io import resolve_all_image_paths
 
 logger = logging.getLogger(__name__)
@@ -123,24 +124,9 @@ def parse_model_response(
     user_history: Optional[UserHistory],
 ) -> ClaimOutput:
     """Parse the model's JSON response into a validated ClaimOutput."""
-    # Extract JSON from response (handle markdown code fences)
-    text = response_text.strip()
-    # Remove markdown code fences if present
-    if text.startswith("```"):
-        # Find the end of the opening fence
-        first_newline = text.index("\n")
-        last_fence = text.rfind("```")
-        if last_fence > first_newline:
-            text = text[first_newline + 1:last_fence].strip()
-
-    # Try to find JSON object in the text
-    json_match = re.search(r'\{[\s\S]*\}', text)
-    if json_match:
-        text = json_match.group(0)
-
     try:
-        data = json.loads(text)
-    except json.JSONDecodeError as e:
+        data = clean_and_load_json(response_text)
+    except Exception as e:
         logger.error(f"Failed to parse model JSON response: {e}\nResponse: {response_text[:500]}")
         return _fallback_output(claim, user_history, f"Model response parsing failed: {e}")
 
@@ -314,7 +300,7 @@ def review_claim(
 
     # Call model
     try:
-        response = model.multimodal_call(
+        response, was_cached = model.cached_multimodal_call(
             prompt=prompt,
             image_paths=image_paths,
             system_prompt=HOLISTIC_SYSTEM_PROMPT,

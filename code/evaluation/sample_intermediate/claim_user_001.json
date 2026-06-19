@@ -1,0 +1,39 @@
+{
+  "claim": {
+    "user_id": "user_001",
+    "claim_object": "car",
+    "user_claim": "Customer: Hi, I found new damage on my car after it was parked outside overnight. | Support: Sorry to hear that. Can you describe what changed? | Customer: The back of the car has a dent now. It was not there before. | Support: Did anything else break or is it mostly body damage? | Customer: Mostly the rear bumper area. I attached the photo I took this morning.",
+    "image_paths": "images/sample/case_001/img_1.jpg"
+  },
+  "stage_1_parsed_claim": {
+    "primary_object": "car",
+    "primary_part": "front_bumper",
+    "issue_hypothesis": "dent",
+    "secondary_targets": [],
+    "has_instruction_text": false,
+    "instruction_text_detail": "",
+    "language_notes": "english",
+    "confidence": 0.95
+  },
+  "stage_2_observations": [
+    {
+      "image_id": "img_1",
+      "object_visible": true,
+      "object_type_seen": "car",
+      "relevant_part_visible": true,
+      "part_seen": "front_bumper",
+      "issue_observed": "dent",
+      "issue_matches_claim": true,
+      "severity_estimate": "medium",
+      "quality_issues": [
+        "text_instruction_present"
+      ],
+      "is_usable": true,
+      "mismatch_notes": "",
+      "has_text_instruction": true,
+      "authenticity_concern": false,
+      "confidence": 0.95,
+      "raw_description": "A clear image showing the front_bumper of the car."
+    }
+  ]
+}

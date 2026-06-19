@@ -1,3 +1,14 @@
+Metadata-Version: 2.4
+Name: hackerrank-orchestrate-claims
+Version: 0.1.0
+Summary: Modular multimodal damage-claim review pipeline for HackerRank Orchestrate.
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: google-genai
+Requires-Dist: pydantic
+Requires-Dist: Pillow
+Requires-Dist: httpx
+
 # Multimodal Claims Review Solution
 
 This directory contains the runnable solution for the HackerRank Orchestrate multimodal evidence review challenge.

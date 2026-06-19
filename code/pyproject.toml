@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hackerrank-orchestrate-claims"
+version = "0.1.0"
+description = "Modular multimodal damage-claim review pipeline for HackerRank Orchestrate."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "google-genai",
+  "pydantic",
+  "Pillow",
+  "httpx",
+]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*", "evaluation*"]

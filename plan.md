@@ -181,9 +181,11 @@ Stage 3 is conditional. It must not run on every row by default.
 
 ## Phase Progress
 
-1. Phase 1 is complete.
-2. Validation passed with `.venv/bin/python -m pytest code/tests`.
-3. Smoke output generation passed for `dataset/sample_claims.csv` using the Phase 1 placeholder path.
+1. **Phase 1 (Foundation)**: Complete. Schema definition, mock adapter, and CLI smoke run successfully validated.
+2. **Phase 2 (Evaluation)**: Complete. Evaluation harness (`code/evaluation/main.py`), reporting, metrics calculation, and tests implemented and verified.
+3. **Phase 3 (Evidence Intelligence)**: Complete. Implemented claim parser, Image Quality checker (Pillow-based), per-image review pipeline, Ollama adapter, and unit tests.
+4. **Phase 4 (Adjudication & Ensemble)**: Implemented but still open on quality. Aggregation, adjudication, and strategy A/B/C code paths exist, but the current checked-in Strategy B evaluation report shows `0/20` row exact-match on `dataset/sample_claims.csv`, so this phase is not yet complete from a submission-quality perspective.
+5. **Phase 5 (Scale, Throughput, and Cost)**: Partially implemented and verified. Telemetry, file-backed caching, and resumable batch execution exist; review also corrected the resumability key to use full claim identity rather than `user_id`, corrected telemetry/cost accounting to use per-row deltas, and hardened cache writes against overlapping-run corruption. Verified on mock sample runs: cold run `0/49` cache hits, warm rerun `49/49` cache hits.
 
 ## Execution Rules
 
@@ -410,6 +412,6 @@ Rules:
 
 ## What To Do Next
 
-1. Execute Phase 1 exactly as written.
-2. Keep work slice-by-slice inside each phase.
-3. Do not begin provider benchmarking until the Phase 2 harness is producing trustworthy metrics.
+1. Improve Stage 1 parsing and Stage 2 image-review quality before doing more Phase 5 optimization work.
+2. Keep Phase 5 marked partial until the evaluation report includes real escalation economics and a non-mock throughput rehearsal.
+3. Do not begin Phase 6 freeze/package work until sample quality materially improves and the chosen strategy has a credible operational report.

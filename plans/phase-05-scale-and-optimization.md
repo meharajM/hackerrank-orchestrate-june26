@@ -147,3 +147,62 @@ full test-set run completes with operational summary.
 ## Exit Criteria
 
 Do not start Phase 6 until the chosen system can be rerun predictably with credible operational numbers.
+
+## Documented Gaps After Review
+
+These are the concrete gaps found while reviewing the implemented Phase 5 work. Keep this list current before starting the packaging or service-hosting refactor.
+
+1. **Submission quality is still the primary blocker**.
+   The checked-in Strategy B evaluation report currently shows very weak sample-set quality, so better operations alone will not make the system ready.
+2. **Concurrency is still planned, not implemented**.
+   Claim and image processing remain sequential in the main orchestration path.
+3. **Stage 3 economics are not yet evidenced in a credible final artifact**.
+   The phase requires escalation-rate, marginal-lift, and projected-cost reporting, but that operational evidence is not yet locked down in a final verified report.
+4. **Full test-set throughput rehearsal is not yet captured as a stable phase artifact**.
+   The phase contract calls for a real end-to-end rehearsal with operational summary, not only partial local smoke checks.
+5. **Requirement filtering is still fuzzy and may over-match**.
+   The current `csv_io.py` requirement filtering uses substring matching and should be tightened before treating it as reusable library logic.
+6. **Aggregation mismatch handling is too coarse**.
+   Mixed-image claims can be penalized too aggressively when one image is mismatched but another image correctly shows the claimed part.
+7. **Top-level orchestration is still CLI-first instead of library-first**.
+   `code/main.py` owns too much runtime wiring: loading datasets, constructing managers, selecting strategies, handling cache/telemetry, and writing rows.
+8. **Entrypoints still depend on `sys.path` bootstrapping**.
+   `code/main.py`, `code/evaluation/main.py`, `code/evaluation/metrics.py`, and `code/src/pipeline/smoke_evidence.py` rely on `sys.path.insert(...)`, which is a packaging smell and blocks clean library export.
+9. **There is no stable public import surface for consumers**.
+   Components exist under `src/`, but there is no curated top-level API for importing claim processors, repositories, strategies, or service-ready facades.
+10. **Single-claim processing is implicit, not modeled as an application service**.
+    Pipelines can process one claim, but there is no dedicated `process_claim(...)` service boundary that a web API, job worker, or external library consumer can call directly.
+11. **Infrastructure dependencies are not fully injectable**.
+    History loading, requirements loading, cache paths, telemetry paths, and model construction are still too coupled to local runtime wiring.
+12. **Cache and telemetry are local-run oriented**.
+    They work for current CLI runs, but they are not yet shaped as replaceable backends for service deployment.
+
+## Improvements To Land Before Packaging And Service Hosting
+
+Use this as the refactor backlog before exporting the project as a reusable library or hosting it as a service.
+
+1. **Make the codebase package-first**.
+   Add installable package metadata and remove `sys.path` hacks from runtime entrypoints.
+2. **Create a public application API**.
+   Expose a small stable surface such as:
+   `process_claim`, `process_claim_batch`, `build_pipeline`, `build_model_adapter`, and `evaluate_predictions`.
+3. **Separate CLI, library, and service layers**.
+   Keep `main.py` as a thin CLI wrapper; move orchestration into importable application services.
+4. **Introduce a claim-processing service boundary**.
+   Add a dedicated service object or module that accepts one claim plus dependencies and returns a validated `ClaimOutput`.
+5. **Extract dependency construction from business orchestration**.
+   Model adapters, cache, telemetry, history store, and requirements store should be wired by factories or dependency-injection helpers, not directly inside the core execution loop.
+6. **Introduce repository/provider abstractions for data sources**.
+   User history, evidence requirements, prompts, cache storage, and telemetry sinks should be replaceable so the system can run from files today and a hosted backend later.
+7. **Define service-safe request and response contracts**.
+   Add explicit request DTOs for single-claim and batch processing so external callers do not need to know repo file layouts.
+8. **Move runtime state to explicit configuration objects**.
+   Cache directories, telemetry sinks, retry policies, model selection, and dataset roots should all be configurable without editing CLI code.
+9. **Curate module exports**.
+   Add meaningful `__init__.py` exports so consumers can import the intended building blocks without reaching deep into internal modules.
+10. **Split evaluation concerns from production inference concerns**.
+    Evaluation utilities should stay importable, but they should not be required for normal single-claim inference.
+11. **Preserve per-claim idempotency and resumability semantics**.
+    The full-claim identity checkpoint logic should become a reusable primitive so batch jobs and services share the same correctness rule.
+12. **Add service-oriented tests**.
+    After refactoring, cover import-based usage, single-claim invocation, dependency injection, and library-level output validation, not only CLI and file-based flows.

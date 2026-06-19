@@ -10,3 +10,5 @@ code.zip
 .pytest_cache/
 .coverage
 htmlcov/
+code/evaluation/.cache/
+telemetry_log.json

@@ -1,0 +1,58 @@
+{
+  "claim": {
+    "user_id": "user_002",
+    "claim_object": "car",
+    "user_claim": "Customer: Parking lot mein meri car ko scrape lag gaya. | Support: Aap kis type ka damage report karna chahte hain? | Customer: Front side par mark aa gaya hai, bumper ke upar. | Support: Light damage hai ya body par scratch? | Customer: Light theek hai, front bumper par scratch hai. Photos upload kar diye hain.",
+    "image_paths": "images/sample/case_002/img_1.jpg;images/sample/case_002/img_2.jpg"
+  },
+  "stage_1_parsed_claim": {
+    "primary_object": "car",
+    "primary_part": "front_bumper",
+    "issue_hypothesis": "scratch",
+    "secondary_targets": [],
+    "has_instruction_text": false,
+    "instruction_text_detail": "",
+    "language_notes": "english",
+    "confidence": 0.95
+  },
+  "stage_2_observations": [
+    {
+      "image_id": "img_1",
+      "object_visible": true,
+      "object_type_seen": "car",
+      "relevant_part_visible": true,
+      "part_seen": "front_bumper",
+      "issue_observed": "scratch",
+      "issue_matches_claim": true,
+      "severity_estimate": "medium",
+      "quality_issues": [
+        "text_instruction_present"
+      ],
+      "is_usable": true,
+      "mismatch_notes": "",
+      "has_text_instruction": true,
+      "authenticity_concern": false,
+      "confidence": 0.95,
+      "raw_description": "A clear image showing the front_bumper of the car."
+    },
+    {
+      "image_id": "img_2",
+      "object_visible": true,
+      "object_type_seen": "car",
+      "relevant_part_visible": true,
+      "part_seen": "front_bumper",
+      "issue_observed": "scratch",
+      "issue_matches_claim": true,
+      "severity_estimate": "medium",
+      "quality_issues": [
+        "text_instruction_present"
+      ],
+      "is_usable": true,
+      "mismatch_notes": "",
+      "has_text_instruction": true,
+      "authenticity_concern": false,
+      "confidence": 0.95,
+      "raw_description": "A clear image showing the front_bumper of the car."
+    }
+  ]
+}

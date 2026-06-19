@@ -1,0 +1,26 @@
+{
+  "timestamp": "2026-06-19T19:20:49.726644Z",
+  "exact_match_rate": 0.0,
+  "exact_matches": 0,
+  "total_evaluated": 20,
+  "field_accuracies": {
+    "evidence_standard_met": 0.85,
+    "risk_flags": 0.5,
+    "issue_type": 0.2,
+    "object_part": 0.15,
+    "claim_status": 0.55,
+    "supporting_image_ids": 0.7,
+    "valid_image": 0.85,
+    "severity": 0.55
+  },
+  "risk_flags_metrics": {
+    "precision": 1.0,
+    "recall": 0.6125,
+    "f1": 0.6683333333333333
+  },
+  "supporting_image_ids_metrics": {
+    "precision": 0.8,
+    "recall": 0.85,
+    "f1": 0.7666666666666666
+  }
+}
