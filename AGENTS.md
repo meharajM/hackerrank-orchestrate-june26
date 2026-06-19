@@ -201,9 +201,47 @@ without updating this file.
 
 - **Deterministic where possible.**.
 - **Add proper README** to the code/ you write.
-- **Read secrets from env vars only** (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`,
-  etc.). Never hardcode.
+- **Read secrets from env vars only**. This project uses `GEMINI_API_KEY`.
+  Never hardcode API keys.
+- **Use the documented macOS/Linux setup path** so judges and future agents can
+  reproduce the run.
 ---
+
+### 6.3 Evaluation and judge setup path
+
+The intended evaluation environment is macOS or Linux. Agents must keep the
+project runnable with this setup sequence and document any changes in
+`README.md` and `code/README.md`.
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install -r code/requirements.txt
+
+export GEMINI_API_KEY="your-google-ai-studio-api-key"
+
+if ! command -v ollama >/dev/null 2>&1; then
+  curl -fsSL https://ollama.com/install.sh | sh
+fi
+
+ollama list >/dev/null 2>&1 || (ollama serve >/tmp/ollama.log 2>&1 & sleep 3)
+ollama pull gemma4:e4b
+ollama run gemma4:e4b ""
+```
+
+Provider and model decisions:
+
+- Hosted primary path: Gemini Developer API through the `google-genai` Python package.
+- Hosted Stage 3 escalation: Gemini re-review only, gated and disabled if `GEMINI_API_KEY` or quota is unavailable.
+- Local fallback and benchmark: Ollama model `gemma4:e4b`.
+- Do not implement OpenAI or Anthropic unless the user explicitly changes this decision.
+- Direct paid API spend defaults to zero. Use free-tier Gemini quota where available and report quota/cost assumptions in `code/evaluation/evaluation_report.md`.
+
+Packaging rules:
+
+- `code.zip` must include runnable source, prompts/configs, `code/README.md`, `code/requirements.txt`, and `code/evaluation/`.
+- `code.zip` must not include `.venv`, Ollama model weights, generated caches, provider response dumps, API keys, `.env`, or other secrets.
+- Setup commands may download local models during setup, but model files are never committed or bundled.
 
 
 ## 7. CROSS-PLATFORM AND AGENT-COMPATIBILITY NOTES

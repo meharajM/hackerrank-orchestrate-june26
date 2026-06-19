@@ -16,10 +16,11 @@ Read [`problem_statement.md`](./problem_statement.md) for the full task spec, in
 2. [What you need to build](#what-you-need-to-build)
 3. [Where your code goes](#where-your-code-goes)
 4. [Quickstart](#quickstart)
-5. [Evaluation](#evaluation)
-6. [Chat transcript logging](#chat-transcript-logging)
-7. [Submission](#submission)
-8. [Judge interview](#judge-interview)
+5. [Mac/Linux setup](#maclinux-setup)
+6. [Evaluation](#evaluation)
+7. [Chat transcript logging](#chat-transcript-logging)
+8. [Submission](#submission)
+9. [Judge interview](#judge-interview)
 
 ---
 
@@ -107,6 +108,37 @@ cd hackerrank-orchestrate-june26
 ```
 
 You are free to use any language or runtime. Python, JavaScript, and TypeScript are all reasonable choices.
+
+---
+
+## Mac/Linux setup
+
+The planned solution is Python-based, with Gemini as the hosted multimodal path and Ollama `gemma4:e4b` as the local benchmark/fallback. Run this setup from the repo root:
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install -r code/requirements.txt
+
+export GEMINI_API_KEY="your-google-ai-studio-api-key"
+
+if ! command -v ollama >/dev/null 2>&1; then
+  curl -fsSL https://ollama.com/install.sh | sh
+fi
+
+ollama list >/dev/null 2>&1 || (ollama serve >/tmp/ollama.log 2>&1 & sleep 3)
+ollama pull gemma4:e4b
+ollama run gemma4:e4b ""
+```
+
+Provider choices:
+
+- Primary hosted model path: Gemini Developer API via the `google-genai` Python package.
+- Stage 3 escalation: Gemini re-review only, gated to hard rows and disabled if the API key or free-tier quota is unavailable.
+- Local fallback and benchmark: Ollama model `gemma4:e4b`.
+- Direct paid API spend defaults to zero; report quota and cost assumptions in `code/evaluation/evaluation_report.md`.
+
+Do not commit or submit `.env`, API keys, `.venv`, Ollama model files, generated caches, or provider response dumps.
 
 ---
 
