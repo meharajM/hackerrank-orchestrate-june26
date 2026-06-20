@@ -1,0 +1,128 @@
+{
+  "claim": {
+    "user_id": "user_001",
+    "claim_object": "car",
+    "user_claim": "Customer: Hi, I found new damage on my car after it was parked outside overnight. | Support: Sorry to hear that. Can you describe what changed? | Customer: The back of the car has a dent now. It was not there before. | Support: Did anything else break or is it mostly body damage? | Customer: Mostly the rear bumper area. I attached the photo I took this morning.",
+    "image_paths": "images/sample/case_001/img_1.jpg"
+  },
+  "stage_1_parsed_claim": {
+    "primary_object": "car",
+    "primary_part": "rear_bumper",
+    "issue_hypothesis": "dent",
+    "secondary_targets": [
+      "body"
+    ],
+    "has_instruction_text": false,
+    "instruction_text_detail": "",
+    "language_notes": "english",
+    "confidence": 0.95
+  },
+  "stage_2_observations": [
+    {
+      "image_id": "img_1",
+      "object_visible": true,
+      "object_type_seen": "car|laptop|package|unknown",
+      "relevant_part_visible": true,
+      "part_seen": "rear_bumper",
+      "issue_observed": "dent",
+      "issue_matches_claim": true,
+      "severity_estimate": "none",
+      "quality_issues": [
+        "blurry_image"
+      ],
+      "is_usable": false,
+      "mismatch_notes": "Observed object 'car|laptop|package|unknown' differs from claimed 'car'.",
+      "has_text_instruction": false,
+      "authenticity_concern": false,
+      "confidence": 0.8,
+      "raw_description": "The image shows a car with a visible rear bumper, and there is a dent in the bumper. The object type seen is 'car', and the relevant part visible is 'rear_bumper'. The issue observed is 'dent', which matches the claimed issue. The severity estimate is 'none'. There are quality issues with the image, including blurriness. The image is usable, and there are no mismatch notes or text instructions. The authenticity concern is false. The confidence level is 0.8."
+    }
+  ],
+  "aggregated_evidence": {
+    "claim_input": {
+      "user_id": "user_001",
+      "image_paths": "images/sample/case_001/img_1.jpg",
+      "user_claim": "Customer: Hi, I found new damage on my car after it was parked outside overnight. | Support: Sorry to hear that. Can you describe what changed? | Customer: The back of the car has a dent now. It was not there before. | Support: Did anything else break or is it mostly body damage? | Customer: Mostly the rear bumper area. I attached the photo I took this morning.",
+      "claim_object": "car"
+    },
+    "parsed_claim": {
+      "primary_object": "car",
+      "primary_part": "rear_bumper",
+      "issue_hypothesis": "dent",
+      "secondary_targets": [
+        "body"
+      ],
+      "has_instruction_text": false,
+      "instruction_text_detail": "",
+      "language_notes": "english",
+      "confidence": 0.95
+    },
+    "observations": [
+      {
+        "image_id": "img_1",
+        "object_visible": true,
+        "object_type_seen": "car|laptop|package|unknown",
+        "relevant_part_visible": true,
+        "part_seen": "rear_bumper",
+        "issue_observed": "dent",
+        "issue_matches_claim": true,
+        "severity_estimate": "none",
+        "quality_issues": [
+          "blurry_image"
+        ],
+        "is_usable": false,
+        "mismatch_notes": "Observed object 'car|laptop|package|unknown' differs from claimed 'car'.",
+        "has_text_instruction": false,
+        "authenticity_concern": false,
+        "confidence": 0.8,
+        "raw_description": "The image shows a car with a visible rear bumper, and there is a dent in the bumper. The object type seen is 'car', and the relevant part visible is 'rear_bumper'. The issue observed is 'dent', which matches the claimed issue. The severity estimate is 'none'. There are quality issues with the image, including blurriness. The image is usable, and there are no mismatch notes or text instructions. The authenticity concern is false. The confidence level is 0.8."
+      }
+    ],
+    "user_history": {
+      "user_id": "user_001",
+      "past_claim_count": 2,
+      "accept_claim": 2,
+      "manual_review_claim": 0,
+      "rejected_claim": 0,
+      "last_90_days_claim_count": 1,
+      "history_flags": "none",
+      "history_summary": "Low-risk user with prior accepted car damage claims"
+    },
+    "any_object_visible": true,
+    "any_part_visible": true,
+    "best_issue_observed": "unknown",
+    "best_severity": "unknown",
+    "any_mismatch": true,
+    "any_quality_issue": true,
+    "any_text_instruction": false,
+    "any_authenticity_concern": false,
+    "all_images_usable": false,
+    "supporting_image_ids": [],
+    "risk_flags": [
+      "blurry_image"
+    ],
+    "evidence_sufficient": false,
+    "confidence": 0.0,
+    "escalation_reasons": [
+      "low_confidence",
+      "mismatch_observed",
+      "insufficient_evidence"
+    ]
+  },
+  "provisional_output": {
+    "user_id": "user_001",
+    "image_paths": "images/sample/case_001/img_1.jpg",
+    "user_claim": "Customer: Hi, I found new damage on my car after it was parked outside overnight. | Support: Sorry to hear that. Can you describe what changed? | Customer: The back of the car has a dent now. It was not there before. | Support: Did anything else break or is it mostly body damage? | Customer: Mostly the rear bumper area. I attached the photo I took this morning.",
+    "claim_object": "car",
+    "evidence_standard_met": "false",
+    "evidence_standard_met_reason": "No usable or clear images were submitted to verify the claim.",
+    "risk_flags": "blurry_image",
+    "issue_type": "unknown",
+    "object_part": "rear_bumper",
+    "claim_status": "not_enough_information",
+    "claim_status_justification": "Not enough information because all submitted images are unusable due to quality issues (e.g., blurry, dark, low visibility).",
+    "supporting_image_ids": "none",
+    "valid_image": "false",
+    "severity": "unknown"
+  }
+}

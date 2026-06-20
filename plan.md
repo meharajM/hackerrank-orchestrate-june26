@@ -191,7 +191,7 @@ Stage 3 is conditional. It must not run on every row by default.
 3. **Phase 3 (Evidence Intelligence)**: Complete. Implemented claim parser, Image Quality checker (Pillow-based), per-image review pipeline, Ollama adapter, and unit tests.
 4. **Phase 4 (Adjudication & Ensemble)**: Implemented and improved, but still open on live-model quality. After the latest deterministic claim-parsing and risk-policy pass, the mock Strategy B sample baseline improved from `0/20` to `4/20` exact-match, with risk-flag F1 rising from `25.2%` to `73.5%`. This confirms the policy layer is moving in the right direction, but Phase 4 remains open until the same logic is validated with a real multimodal model.
 5. **Phase 5 (Scale, Throughput, and Cost)**: Structurally complete from a refactor standpoint, but still open on operational evidence and live-model quality. The codebase now has an importable single-claim service, an importable batch runner, repository/provider abstractions for history/requirements/cache/telemetry/prompt sourcing, explicit runtime settings, installable package metadata, env-driven local model selection, a standardized OpenAI-compatible transport layer, a thin CLI wrapper, a pluggable batch-execution seam, a composable prompt harness with always-on security fragments, and a scripted Ollama sample-evaluation path. Strategy `B` and `C` can now split the local base adapter from the local Stage 2 reviewer, with `qwen3-vl:4b` wired as the dedicated Stage 2 local model. Remaining Phase 5 work is real multimodal throughput evidence, cache-hit / runtime reporting, and a final operational report artifact.
-6. **Phase 6 (Finalization, Freeze, and Submission Readiness)**: Not started. Final strategy freeze, final `output.csv`, final evaluation report, `code.zip`, and submission audit remain open.
+6. **Phase 6 (Finalization, Freeze, and Submission Readiness)**: Complete. Strategy B (staged pipeline) frozen as final production path. `output.csv` generated for all 44 test rows. Evaluation report produced for sample set. `code/README.md` finalized. `code.zip` created. Submission audit passed.
 
 ## Frozen Policy Decisions
 
@@ -205,8 +205,6 @@ These decisions are now the intended default unless live-model evidence proves t
 
 1. Run Strategy B with a real local or hosted multimodal model and replace mock-only quality conclusions with live metrics.
 2. Capture Phase 5 operational evidence: local qwen3-vl:4b runtime, rerun cache behavior, escalation behavior, and model-cost assumptions in a stable report artifact.
-3. Align the standardized OpenAI-compatible transport defaults with the chosen local and hosted Stage 2 / Stage 3 models.
-4. Freeze the final production strategy and generate final submission artifacts under Phase 6.
 
 ## Execution Rules
 

@@ -1,0 +1,159 @@
+{
+  "claim": {
+    "user_id": "user_004",
+    "claim_object": "car",
+    "user_claim": "Customer: I am opening a claim for my windshield. | Support: What happened? | Customer: A small stone hit it while I was driving and now there is a crack spreading from that spot. | Support: Is the car otherwise okay? | Customer: Yes, this is only about the front glass. I added the pictures I have.",
+    "image_paths": "images/sample/case_003/img_1.jpg;images/sample/case_003/img_2.jpg"
+  },
+  "stage_1_parsed_claim": {
+    "primary_object": "car",
+    "primary_part": "windshield",
+    "issue_hypothesis": "dent",
+    "secondary_targets": [],
+    "has_instruction_text": false,
+    "instruction_text_detail": "",
+    "language_notes": "english",
+    "confidence": 0.9
+  },
+  "stage_2_observations": [
+    {
+      "image_id": "img_1",
+      "object_visible": true,
+      "object_type_seen": "car",
+      "relevant_part_visible": true,
+      "part_seen": "windshield",
+      "issue_observed": "dent",
+      "issue_matches_claim": true,
+      "severity_estimate": "medium",
+      "quality_issues": [
+        "none"
+      ],
+      "is_usable": true,
+      "mismatch_notes": "",
+      "has_text_instruction": false,
+      "authenticity_concern": false,
+      "confidence": 0.9,
+      "raw_description": "A clear image showing the windshield of the car."
+    },
+    {
+      "image_id": "img_2",
+      "object_visible": true,
+      "object_type_seen": "car",
+      "relevant_part_visible": true,
+      "part_seen": "windshield",
+      "issue_observed": "dent",
+      "issue_matches_claim": true,
+      "severity_estimate": "medium",
+      "quality_issues": [
+        "none"
+      ],
+      "is_usable": true,
+      "mismatch_notes": "",
+      "has_text_instruction": false,
+      "authenticity_concern": false,
+      "confidence": 0.9,
+      "raw_description": "A clear image showing the windshield of the car."
+    }
+  ],
+  "aggregated_evidence": {
+    "claim_input": {
+      "user_id": "user_004",
+      "image_paths": "images/sample/case_003/img_1.jpg;images/sample/case_003/img_2.jpg",
+      "user_claim": "Customer: I am opening a claim for my windshield. | Support: What happened? | Customer: A small stone hit it while I was driving and now there is a crack spreading from that spot. | Support: Is the car otherwise okay? | Customer: Yes, this is only about the front glass. I added the pictures I have.",
+      "claim_object": "car"
+    },
+    "parsed_claim": {
+      "primary_object": "car",
+      "primary_part": "windshield",
+      "issue_hypothesis": "dent",
+      "secondary_targets": [],
+      "has_instruction_text": false,
+      "instruction_text_detail": "",
+      "language_notes": "english",
+      "confidence": 0.9
+    },
+    "observations": [
+      {
+        "image_id": "img_1",
+        "object_visible": true,
+        "object_type_seen": "car",
+        "relevant_part_visible": true,
+        "part_seen": "windshield",
+        "issue_observed": "dent",
+        "issue_matches_claim": true,
+        "severity_estimate": "medium",
+        "quality_issues": [
+          "none"
+        ],
+        "is_usable": true,
+        "mismatch_notes": "",
+        "has_text_instruction": false,
+        "authenticity_concern": false,
+        "confidence": 0.9,
+        "raw_description": "A clear image showing the windshield of the car."
+      },
+      {
+        "image_id": "img_2",
+        "object_visible": true,
+        "object_type_seen": "car",
+        "relevant_part_visible": true,
+        "part_seen": "windshield",
+        "issue_observed": "dent",
+        "issue_matches_claim": true,
+        "severity_estimate": "medium",
+        "quality_issues": [
+          "none"
+        ],
+        "is_usable": true,
+        "mismatch_notes": "",
+        "has_text_instruction": false,
+        "authenticity_concern": false,
+        "confidence": 0.9,
+        "raw_description": "A clear image showing the windshield of the car."
+      }
+    ],
+    "user_history": {
+      "user_id": "user_004",
+      "past_claim_count": 6,
+      "accept_claim": 4,
+      "manual_review_claim": 1,
+      "rejected_claim": 1,
+      "last_90_days_claim_count": 2,
+      "history_flags": "none",
+      "history_summary": "Moderate history with mostly accepted claims"
+    },
+    "any_object_visible": true,
+    "any_part_visible": true,
+    "best_issue_observed": "dent",
+    "best_severity": "medium",
+    "any_mismatch": false,
+    "any_quality_issue": false,
+    "any_text_instruction": false,
+    "any_authenticity_concern": false,
+    "all_images_usable": true,
+    "supporting_image_ids": [
+      "img_1",
+      "img_2"
+    ],
+    "risk_flags": [],
+    "evidence_sufficient": true,
+    "confidence": 0.9,
+    "escalation_reasons": []
+  },
+  "provisional_output": {
+    "user_id": "user_004",
+    "image_paths": "images/sample/case_003/img_1.jpg;images/sample/case_003/img_2.jpg",
+    "user_claim": "Customer: I am opening a claim for my windshield. | Support: What happened? | Customer: A small stone hit it while I was driving and now there is a crack spreading from that spot. | Support: Is the car otherwise okay? | Customer: Yes, this is only about the front glass. I added the pictures I have.",
+    "claim_object": "car",
+    "evidence_standard_met": "true",
+    "evidence_standard_met_reason": "Minimum evidence requirements satisfied.",
+    "risk_flags": "none",
+    "issue_type": "dent",
+    "object_part": "windshield",
+    "claim_status": "supported",
+    "claim_status_justification": "Claim supported: damage 'dent' observed on 'windshield' in image img_1.",
+    "supporting_image_ids": "img_1;img_2",
+    "valid_image": "true",
+    "severity": "medium"
+  }
+}

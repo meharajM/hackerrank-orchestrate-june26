@@ -34,6 +34,7 @@ class OpenAICompatibleAdapter(ModelAdapter):
         multimodal_timeout: float | None = None,
         response_format_json: bool = True,
         max_tokens: int | None = None,
+        reasoning_effort: str | None = None,
     ):
         self._model_name = model_name
         self._base_url = _normalize_base_url(base_url or os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1"))
@@ -44,6 +45,7 @@ class OpenAICompatibleAdapter(ModelAdapter):
         self._text_timeout = text_timeout or float(os.environ.get("OPENAI_COMPAT_TEXT_TIMEOUT", os.environ.get("OLLAMA_TEXT_TIMEOUT", "120")))
         self._multimodal_timeout = multimodal_timeout or float(os.environ.get("OPENAI_COMPAT_MULTIMODAL_TIMEOUT", os.environ.get("OLLAMA_MULTIMODAL_TIMEOUT", "300")))
         self._response_format_json = response_format_json
+        self._reasoning_effort = reasoning_effort
         self._max_tokens = (
             max_tokens
             if max_tokens is not None
@@ -117,6 +119,8 @@ class OpenAICompatibleAdapter(ModelAdapter):
         }
         if self._response_format_json:
             request_kwargs["response_format"] = {"type": "json_object"}
+        if self._reasoning_effort:
+            request_kwargs["extra_body"] = {"reasoning_effort": self._reasoning_effort}
 
         for attempt in range(self._max_retries):
             try:

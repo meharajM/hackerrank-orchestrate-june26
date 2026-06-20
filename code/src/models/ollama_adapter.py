@@ -30,4 +30,5 @@ class OllamaAdapter(OpenAICompatibleAdapter):
             text_timeout=text_timeout,
             multimodal_timeout=multimodal_timeout,
             response_format_json=True,
+            reasoning_effort=os.environ.get("OLLAMA_REASONING_EFFORT", "none"),
         )

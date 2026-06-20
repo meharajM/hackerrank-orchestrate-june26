@@ -1,0 +1,163 @@
+{
+  "claim": {
+    "user_id": "user_002",
+    "claim_object": "car",
+    "user_claim": "Customer: Parking lot mein meri car ko scrape lag gaya. | Support: Aap kis type ka damage report karna chahte hain? | Customer: Front side par mark aa gaya hai, bumper ke upar. | Support: Light damage hai ya body par scratch? | Customer: Light theek hai, front bumper par scratch hai. Photos upload kar diye hain.",
+    "image_paths": "images/sample/case_002/img_1.jpg;images/sample/case_002/img_2.jpg"
+  },
+  "stage_1_parsed_claim": {
+    "primary_object": "car",
+    "primary_part": "front_bumper",
+    "issue_hypothesis": "scratch",
+    "secondary_targets": [
+      "body"
+    ],
+    "has_instruction_text": false,
+    "instruction_text_detail": "",
+    "language_notes": "hinglish",
+    "confidence": 0.85
+  },
+  "stage_2_observations": [
+    {
+      "image_id": "img_1",
+      "object_visible": true,
+      "object_type_seen": "car",
+      "relevant_part_visible": true,
+      "part_seen": "body",
+      "issue_observed": "scratch",
+      "issue_matches_claim": true,
+      "severity_estimate": "medium",
+      "quality_issues": [
+        "none"
+      ],
+      "is_usable": true,
+      "mismatch_notes": "",
+      "has_text_instruction": false,
+      "authenticity_concern": false,
+      "confidence": 0.9,
+      "raw_description": "A clear image showing the body of the car."
+    },
+    {
+      "image_id": "img_2",
+      "object_visible": true,
+      "object_type_seen": "car",
+      "relevant_part_visible": true,
+      "part_seen": "body",
+      "issue_observed": "scratch",
+      "issue_matches_claim": true,
+      "severity_estimate": "medium",
+      "quality_issues": [
+        "none"
+      ],
+      "is_usable": true,
+      "mismatch_notes": "",
+      "has_text_instruction": false,
+      "authenticity_concern": false,
+      "confidence": 0.9,
+      "raw_description": "A clear image showing the body of the car."
+    }
+  ],
+  "aggregated_evidence": {
+    "claim_input": {
+      "user_id": "user_002",
+      "image_paths": "images/sample/case_002/img_1.jpg;images/sample/case_002/img_2.jpg",
+      "user_claim": "Customer: Parking lot mein meri car ko scrape lag gaya. | Support: Aap kis type ka damage report karna chahte hain? | Customer: Front side par mark aa gaya hai, bumper ke upar. | Support: Light damage hai ya body par scratch? | Customer: Light theek hai, front bumper par scratch hai. Photos upload kar diye hain.",
+      "claim_object": "car"
+    },
+    "parsed_claim": {
+      "primary_object": "car",
+      "primary_part": "front_bumper",
+      "issue_hypothesis": "scratch",
+      "secondary_targets": [
+        "body"
+      ],
+      "has_instruction_text": false,
+      "instruction_text_detail": "",
+      "language_notes": "hinglish",
+      "confidence": 0.85
+    },
+    "observations": [
+      {
+        "image_id": "img_1",
+        "object_visible": true,
+        "object_type_seen": "car",
+        "relevant_part_visible": true,
+        "part_seen": "body",
+        "issue_observed": "scratch",
+        "issue_matches_claim": true,
+        "severity_estimate": "medium",
+        "quality_issues": [
+          "none"
+        ],
+        "is_usable": true,
+        "mismatch_notes": "",
+        "has_text_instruction": false,
+        "authenticity_concern": false,
+        "confidence": 0.9,
+        "raw_description": "A clear image showing the body of the car."
+      },
+      {
+        "image_id": "img_2",
+        "object_visible": true,
+        "object_type_seen": "car",
+        "relevant_part_visible": true,
+        "part_seen": "body",
+        "issue_observed": "scratch",
+        "issue_matches_claim": true,
+        "severity_estimate": "medium",
+        "quality_issues": [
+          "none"
+        ],
+        "is_usable": true,
+        "mismatch_notes": "",
+        "has_text_instruction": false,
+        "authenticity_concern": false,
+        "confidence": 0.9,
+        "raw_description": "A clear image showing the body of the car."
+      }
+    ],
+    "user_history": {
+      "user_id": "user_002",
+      "past_claim_count": 4,
+      "accept_claim": 3,
+      "manual_review_claim": 1,
+      "rejected_claim": 0,
+      "last_90_days_claim_count": 2,
+      "history_flags": "none",
+      "history_summary": "Mostly accepted vehicle claims with one manual review"
+    },
+    "any_object_visible": true,
+    "any_part_visible": true,
+    "best_issue_observed": "scratch",
+    "best_severity": "medium",
+    "any_mismatch": false,
+    "any_quality_issue": false,
+    "any_text_instruction": false,
+    "any_authenticity_concern": false,
+    "all_images_usable": true,
+    "supporting_image_ids": [
+      "img_1",
+      "img_2"
+    ],
+    "risk_flags": [],
+    "evidence_sufficient": true,
+    "confidence": 0.9,
+    "escalation_reasons": []
+  },
+  "provisional_output": {
+    "user_id": "user_002",
+    "image_paths": "images/sample/case_002/img_1.jpg;images/sample/case_002/img_2.jpg",
+    "user_claim": "Customer: Parking lot mein meri car ko scrape lag gaya. | Support: Aap kis type ka damage report karna chahte hain? | Customer: Front side par mark aa gaya hai, bumper ke upar. | Support: Light damage hai ya body par scratch? | Customer: Light theek hai, front bumper par scratch hai. Photos upload kar diye hain.",
+    "claim_object": "car",
+    "evidence_standard_met": "true",
+    "evidence_standard_met_reason": "Minimum evidence requirements satisfied.",
+    "risk_flags": "none",
+    "issue_type": "scratch",
+    "object_part": "body",
+    "claim_status": "supported",
+    "claim_status_justification": "Claim supported: damage 'scratch' observed on 'body' in image img_1.",
+    "supporting_image_ids": "img_1;img_2",
+    "valid_image": "true",
+    "severity": "medium"
+  }
+}

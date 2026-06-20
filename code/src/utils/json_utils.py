@@ -40,17 +40,25 @@ def _strip_response_wrappers(text: str) -> str:
         except ValueError:
             pass
 
+    clean_text = _strip_think_tags(clean_text, "<think>", "</think>")
+
     tick = chr(96)
-    think_open = f"{tick}think{tick}"
-    think_close = f"{tick}/think{tick}"
-    while think_open in clean_text:
-        start = clean_text.find(think_open)
-        end = clean_text.find(think_close, start)
-        if end == -1:
-            clean_text = clean_text[:start]
-            break
-        clean_text = clean_text[:start] + clean_text[end + len(think_close):]
+    clean_text = _strip_think_tags(clean_text, f"{tick}think{tick}", f"{tick}/think{tick}")
+
     return clean_text.strip()
+
+
+def _strip_think_tags(text: str, open_tag: str, close_tag: str) -> str:
+    """Strip all occurrences of open_tag...close_tag blocks from text."""
+    result = text
+    while open_tag in result:
+        start = result.find(open_tag)
+        end = result.find(close_tag, start)
+        if end == -1:
+            result = result[:start]
+            break
+        result = result[:start] + result[end + len(close_tag):]
+    return result
 
 
 def _repair_common_json_issues(text: str) -> str:
