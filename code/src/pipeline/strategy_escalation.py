@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import Optional
 
 from ..models.base import ModelAdapter
+from ..prompting import PromptProvider
+from ..runtime import RuntimeSettings
 from ..schemas import (
     ClaimInput,
     ClaimOutput,
@@ -31,17 +33,33 @@ def run_escalation_pipeline(
     model: ModelAdapter,
     escalation_model: ModelAdapter,
     dataset_dir: Path,
+    stage2_model: ModelAdapter | None = None,
     user_history: Optional[UserHistory] = None,
     evidence_requirements: Optional[list[EvidenceRequirement]] = None,
+    prompt_provider: PromptProvider | None = None,
+    runtime_settings: RuntimeSettings | None = None,
 ) -> ClaimOutput:
     """Run Strategy C: Conditional escalation pipeline."""
+    runtime_settings = runtime_settings or RuntimeSettings()
+    stage2_model = stage2_model or model
     # 1. Run Staged Pipeline (Strategy B) internally to get intermediate evidence
-    parsed_claim = parse_claim(claim, model)
+    parsed_claim = parse_claim(
+        claim,
+        model,
+        prompt_provider=prompt_provider,
+        runtime_settings=runtime_settings,
+    )
     image_info = resolve_all_image_paths(claim.image_paths, dataset_dir)
     
     observations = []
     for img_id, img_path, exists in image_info:
-        obs = review_image(img_path, parsed_claim, model)
+        obs = review_image(
+            img_path,
+            parsed_claim,
+            stage2_model,
+            prompt_provider=prompt_provider,
+            runtime_settings=runtime_settings,
+        )
         observations.append(obs)
 
     evidence = aggregate_observations(
@@ -58,7 +76,7 @@ def run_escalation_pipeline(
     escalated = False
     reasons = []
 
-    if evidence.confidence < 0.6:
+    if evidence.confidence < runtime_settings.escalation_confidence_threshold:
         escalated = True
         reasons.append(f"low_confidence_({evidence.confidence:.2f})")
         
@@ -87,6 +105,7 @@ def run_escalation_pipeline(
                     dataset_dir=dataset_dir,
                     user_history=user_history,
                     evidence_requirements=evidence_requirements,
+                    prompt_provider=prompt_provider,
                 )
 
                 # Merge Policy:

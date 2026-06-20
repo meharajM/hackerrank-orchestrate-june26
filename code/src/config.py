@@ -53,6 +53,10 @@ class Config:
     def images_dir(self) -> Path:
         return self.dataset_dir / "images"
 
+    @property
+    def prompts_dir(self) -> Path:
+        return self.repo_root / "code" / "src" / "prompts"
+
     # Provider settings
     @property
     def gemini_api_key(self) -> str | None:
@@ -64,10 +68,16 @@ class Config:
         return key is not None and len(key.strip()) > 0
 
     # Model settings
-    gemini_model: str = "gemini-2.0-flash"
-    gemini_thinking_model: str = "gemini-2.5-flash"
-    ollama_model: str = "gemma4:e4b"
-    ollama_base_url: str = "http://localhost:11434"
+    gemini_model: str = field(default_factory=lambda: os.environ.get("GEMINI_MODEL", "gemini-2.0-flash"))
+    gemini_thinking_model: str = field(default_factory=lambda: os.environ.get("GEMINI_THINKING_MODEL", "gemini-2.5-flash"))
+    ollama_model: str = field(default_factory=lambda: os.environ.get("OLLAMA_MODEL", "qwen3-vl:4b"))
+    ollama_stage2_model: str = field(default_factory=lambda: os.environ.get("OLLAMA_STAGE2_MODEL", "qwen3-vl:4b"))
+    ollama_base_url: str = field(default_factory=lambda: os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434"))
+    ollama_api_key: str = field(default_factory=lambda: os.environ.get("OLLAMA_API_KEY", "ollama"))
+    openai_compatible_model: str = field(default_factory=lambda: os.environ.get("OPENAI_COMPAT_MODEL", os.environ.get("OPENAI_MODEL", "gpt-4o-mini")))
+    openai_compatible_stage2_model: str = field(default_factory=lambda: os.environ.get("OPENAI_COMPAT_STAGE2_MODEL", os.environ.get("OPENAI_COMPAT_MODEL", os.environ.get("OPENAI_MODEL", "gpt-4o-mini"))))
+    openai_compatible_base_url: str = field(default_factory=lambda: os.environ.get("OPENAI_COMPAT_BASE_URL", os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")))
+    openai_compatible_api_key: str = field(default_factory=lambda: os.environ.get("OPENAI_COMPAT_API_KEY", os.environ.get("OPENAI_API_KEY", "")))
 
     # Pipeline settings
     max_concurrent_requests: int = 5

@@ -27,6 +27,15 @@ except ImportError:
     from evaluation.reporting import generate_slice_metrics, build_markdown_report
 
 
+def _describe_context_models(context) -> str:
+    label = context.model.name
+    if context.stage2_model is not None and context.stage2_model is not context.model:
+        label = f"{label}; stage2={context.stage2_model.name}"
+    if context.escalation_model is not None and context.escalation_model not in {context.model, context.stage2_model}:
+        label = f"{label}; escalation={context.escalation_model.name}"
+    return label
+
+
 def main():
     parser = argparse.ArgumentParser(description="HackerRank Orchestrate Evaluation Runner")
     parser.add_argument(
@@ -49,7 +58,7 @@ def main():
     parser.add_argument(
         "--model",
         type=str,
-        choices=["gemini", "ollama", "mock"],
+        choices=["gemini", "ollama", "openai_compat", "mock"],
         help="Optionally run the pipeline dynamically on gold rows with the specified model adapter.",
     )
     parser.add_argument(
@@ -124,9 +133,9 @@ def main():
         )
 
         strategy_name = f"dynamic_run_strategy_{args.strategy}"
-        model_version = context.model.name
+        model_version = _describe_context_models(context)
 
-        print(f"Running pipeline dynamically with strategy {args.strategy} and model: {context.model.name}...")
+        print(f"Running pipeline dynamically with strategy {args.strategy} and model(s): {model_version}...")
         pred_outputs = []
         for i, claim in enumerate(claims, 1):
             print(f"[{i}/{len(claims)}] Processing: {claim.user_id} - {claim.claim_object}")

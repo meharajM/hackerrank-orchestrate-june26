@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from .base import ModelAdapter
+from ..pipeline.claim_rules import detect_instruction_text, extract_claim_signals
 
 
 class MockAdapter(ModelAdapter):
@@ -60,7 +61,7 @@ class MockAdapter(ModelAdapter):
         """Generate a realistic mock JSON response by parsing the prompt for clues."""
         # Simple heuristics based on prompt
         prompt_lower = prompt.lower()
-        
+
         # Isolate the input/context portion of the prompt to avoid matching the system instructions allowed enums
         input_text = prompt_lower
         if "### input text:" in prompt_lower:
@@ -71,42 +72,46 @@ class MockAdapter(ModelAdapter):
             parts = prompt_lower.split("### claim context:")
             if len(parts) > 1:
                 input_text = parts[1].split("###")[0].strip()
-        
+        elif "claim:" in prompt_lower and "claimed_part:" in prompt_lower:
+            lines = [line.strip() for line in prompt_lower.splitlines()]
+            claim_lines = [line for line in lines if line.startswith("- object:") or line.startswith("- claimed_part:") or line.startswith("- claimed_issue:")]
+            if claim_lines:
+                input_text = " ".join(claim_lines)
+
         # Determine object
         claim_object = "car"
-        if "laptop" in input_text:
+        if "object: laptop" in input_text or "laptop" in input_text:
             claim_object = "laptop"
-        elif "package" in input_text:
+        elif "object: package" in input_text or "package" in input_text:
             claim_object = "package"
 
-        # Determine part and issue
-        object_part = "unknown"
-        issue_type = "unknown"
+        claim_signals = extract_claim_signals(input_text, claim_object)
+        object_part = claim_signals.primary_part
+        issue_type = claim_signals.issue_hypothesis
         severity = "medium"
         claim_status = "supported"
         supporting_image_ids = ["img_1"]
         risk_flags = ["none"]
 
-        if claim_object == "car":
-            object_part = "door"
-            issue_type = "dent"
-            if "bumper" in input_text:
-                object_part = "front_bumper"
-            if "scratch" in input_text:
-                issue_type = "scratch"
-        elif claim_object == "laptop":
-            object_part = "screen"
-            issue_type = "crack"
-            if "keyboard" in input_text:
-                object_part = "keyboard"
-        elif claim_object == "package":
-            object_part = "box"
-            issue_type = "torn_packaging"
-            if "crushed" in input_text:
-                issue_type = "crushed_packaging"
+        if object_part == "unknown":
+            defaults = {
+                "car": "body",
+                "laptop": "screen",
+                "package": "box",
+            }
+            object_part = defaults.get(claim_object, "unknown")
 
-        # Simulate instruction text flag check
-        if "approve" in prompt_lower or "ignore rules" in prompt_lower:
+        if issue_type == "unknown":
+            defaults = {
+                "car": "dent",
+                "laptop": "crack",
+                "package": "torn_packaging",
+            }
+            issue_type = defaults.get(claim_object, "unknown")
+
+        # Simulate instruction text flag check against the extracted user text only.
+        has_instruction_text, _ = detect_instruction_text(input_text)
+        if has_instruction_text:
             risk_flags = ["text_instruction_present"]
 
         # If user history risk is mentioned in the prompt, pass it along
@@ -118,11 +123,11 @@ class MockAdapter(ModelAdapter):
             "primary_object": claim_object,
             "primary_part": object_part,
             "issue_hypothesis": issue_type,
-            "secondary_targets": [],
+            "secondary_targets": claim_signals.secondary_targets,
             "has_instruction_text": "text_instruction_present" in risk_flags,
             "instruction_text_detail": "Instruction text detected" if "text_instruction_present" in risk_flags else "",
-            "language_notes": "english",
-            "confidence": 0.95,
+            "language_notes": claim_signals.language_notes,
+            "confidence": max(0.9, claim_signals.confidence),
             
             # Stage 2 ImageObservation fields
             "image_id": "img_1",

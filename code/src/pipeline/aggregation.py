@@ -20,6 +20,15 @@ from ..schemas import (
 
 logger = logging.getLogger(__name__)
 
+MANUAL_REVIEW_FLAGS = {
+    "claim_mismatch",
+    "wrong_object",
+    "non_original_image",
+    "possible_manipulation",
+    "text_instruction_present",
+    "user_history_risk",
+}
+
 
 def aggregate_observations(
     claim_input: ClaimInput,
@@ -58,6 +67,15 @@ def aggregate_observations(
     any_text_instruction = parsed_claim.has_instruction_text or any(obs.has_text_instruction for obs in observations)
     any_authenticity_concern = any(obs.authenticity_concern for obs in observations)
     all_images_usable = all(obs.is_usable for obs in observations)
+    usable_obs = [obs for obs in observations if obs.is_usable]
+    has_matching_support = any(
+        obs.is_usable and obs.relevant_part_visible and obs.issue_matches_claim
+        for obs in observations
+    )
+    has_visible_claimed_part = any(
+        obs.is_usable and obs.relevant_part_visible
+        for obs in observations
+    )
 
     # 1. Determine best issue observed
     # Order by usability and part visibility, then by confidence descending
@@ -117,22 +135,29 @@ def aggregate_observations(
     # Model-detected mismatches or invalid states
     for obs in observations:
         if obs.is_usable:
-            if not obs.object_visible:
+            if obs.object_type_seen != "unknown" and obs.object_type_seen.lower() != claim_input.claim_object.lower():
                 collected_flags.add("wrong_object")
-            elif obs.object_type_seen != "unknown" and obs.object_type_seen.lower() != claim_input.claim_object.lower():
-                collected_flags.add("wrong_object")
-                
-            if obs.object_visible and not obs.relevant_part_visible:
+
+            if (
+                obs.object_visible
+                and obs.part_seen != "unknown"
+                and not obs.relevant_part_visible
+                and not has_visible_claimed_part
+            ):
                 collected_flags.add("wrong_object_part")
-                
-            if obs.object_visible and obs.relevant_part_visible and not obs.issue_matches_claim:
+
+            if (
+                obs.object_visible
+                and obs.relevant_part_visible
+                and not obs.issue_matches_claim
+            ):
                 # If damage was observed but didn't match claim
                 if obs.issue_observed not in ("none", "unknown"):
                     collected_flags.add("claim_mismatch")
-                    
+
         if obs.authenticity_concern:
             collected_flags.add("non_original_image")
-            
+
         if obs.has_text_instruction:
             collected_flags.add("text_instruction_present")
 
@@ -176,8 +201,10 @@ def aggregate_observations(
             for obs in observations
         )
 
+    if len(usable_obs) > 1 and "wrong_object" in collected_flags:
+        evidence_sufficient = False
+
     # 6. Confidence and escalation reasons
-    usable_obs = [obs for obs in observations if obs.is_usable]
     if usable_obs:
         confidence = sum(obs.confidence for obs in usable_obs) / len(usable_obs)
     else:
@@ -197,8 +224,8 @@ def aggregate_observations(
     if not evidence_sufficient:
         escalation_reasons.append("insufficient_evidence")
 
-    # If any strong escalation reason is present, add manual review required flag
-    if escalation_reasons:
+    # Reserve manual review for substantive risk or fraud-style triggers.
+    if collected_flags.intersection(MANUAL_REVIEW_FLAGS):
         collected_flags.add("manual_review_required")
 
     return AggregatedEvidence(

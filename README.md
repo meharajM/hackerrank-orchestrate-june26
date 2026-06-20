@@ -113,7 +113,7 @@ You are free to use any language or runtime. Python, JavaScript, and TypeScript 
 
 ## Mac/Linux setup
 
-The planned solution is Python-based, with Gemini as the hosted multimodal path and Ollama `gemma4:e4b` as the local benchmark/fallback. Run this setup from the repo root:
+The planned solution is Python-based, with Gemini as the hosted multimodal path and Ollama `qwen3-vl:4b` as the local model of choice for both the base adapter and Stage 2 image-grounded review by default. Run this setup from the repo root:
 
 ```bash
 python3 -m venv .venv
@@ -127,15 +127,16 @@ if ! command -v ollama >/dev/null 2>&1; then
 fi
 
 ollama list >/dev/null 2>&1 || (ollama serve >/tmp/ollama.log 2>&1 & sleep 3)
-ollama pull gemma4:e4b
-ollama run gemma4:e4b ""
+ollama pull qwen3-vl:4b
+ollama run qwen3-vl:4b ""
 ```
 
 Provider choices:
 
 - Primary hosted model path: Gemini Developer API via the `google-genai` Python package.
 - Stage 3 escalation: Gemini re-review only, gated to hard rows and disabled if the API key or free-tier quota is unavailable.
-- Local fallback and benchmark: Ollama model `gemma4:e4b`.
+- Local base adapter: Ollama model `qwen3-vl:4b`.
+- Local Stage 2 reviewer: Ollama model `qwen3-vl:4b` by default, overridable if needed.
 - Direct paid API spend defaults to zero; report quota and cost assumptions in `code/evaluation/evaluation_report.md`.
 
 Do not commit or submit `.env`, API keys, `.venv`, Ollama model files, generated caches, or provider response dumps.

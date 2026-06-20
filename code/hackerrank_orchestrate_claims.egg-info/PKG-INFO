@@ -29,16 +29,25 @@ if ! command -v ollama >/dev/null 2>&1; then
   curl -fsSL https://ollama.com/install.sh | sh
 fi
 
-ollama list >/dev/null 2>&1 || (ollama serve >/tmp/ollama.log 2>&1 & sleep 3)
-ollama pull gemma4:e4b
-ollama run gemma4:e4b ""
+bash scripts/bootstrap_and_run.sh
 ```
+
+Optional local-model overrides:
+
+```bash
+export OLLAMA_MODEL="qwen3-vl:4b"
+export OLLAMA_BASE_URL="http://localhost:11434"
+```
+
+`OLLAMA_MODEL` is configurable so local experiments can use another pulled multimodal model, but the project default and judge-path target remain `qwen3-vl:4b`.
+If the target model is unavailable on the current machine, the bootstrap flow falls back to a locally usable multimodal model such as `llava` or `moondream`.
+If no local multimodal runner can stay resident on the machine, the bootstrap script finishes with a mock smoke test so setup still completes end to end.
 
 ## Provider Policy
 
 - Primary hosted path: Gemini Developer API through `google-genai`.
 - Stage 3 escalation: Gemini re-review only, gated to hard rows.
-- Local fallback and benchmark: Ollama model `gemma4:e4b`.
+- Local fallback and benchmark: Ollama model `qwen3-vl:4b`.
 - Direct paid API spend defaults to zero.
 - If `GEMINI_API_KEY` or free-tier quota is unavailable, the pipeline must still produce schema-valid rows by disabling hosted calls or using the local fallback where available.
 
@@ -50,7 +59,53 @@ Final command targets:
 .venv/bin/python code/main.py --input dataset/claims.csv --output output.csv
 .venv/bin/python code/evaluation/main.py --predictions <sample_predictions.csv> --gold dataset/sample_claims.csv
 .venv/bin/python -m pytest code/tests
+scripts/run_local_ollama_eval.sh
 ```
+
+## Local Evaluation Workflow
+
+Use the local operator script when Gemini is unavailable and you want a real multimodal sample pass instead of the mock adapter:
+
+```bash
+chmod +x scripts/run_local_ollama_eval.sh
+OLLAMA_MODEL=qwen3-vl:4b scripts/run_local_ollama_eval.sh
+```
+
+This script:
+
+1. starts `ollama serve` if it is not already running
+2. stops a legacy `Ollama.app` server if it is holding the port
+3. pulls the requested local model if missing
+4. falls back to the first usable multimodal model if the requested one cannot be pulled
+5. checks that the selected model actually accepts image input through Ollama
+6. runs `code/evaluation/main.py` on `dataset/sample_claims.csv` with `--model ollama --strategy B`
+7. writes local-model artifacts to:
+   `code/evaluation/evaluation_report.local-ollama.md`
+  `code/evaluation/metrics.local-ollama.json`
+  `code/evaluation/experiments.local-ollama.json`
+
+## Fresh Machine Bootstrap
+
+Use the bootstrap skill and script when cloning this repo onto a new machine or judge environment:
+
+```bash
+bash scripts/bootstrap_and_run.sh
+```
+
+This command:
+
+1. checks `python3`, `curl`, and `ollama`
+2. creates `.venv` if needed
+3. upgrades `pip`
+4. installs `code/requirements.txt`
+5. installs `code/` in editable mode
+6. starts or installs Ollama when missing
+7. verifies the selected multimodal model can read a real sample image
+8. runs sample inference and sample evaluation
+9. prints the generated output file paths
+
+If the default model cannot be used on the current machine, the script may fall back to a local multimodal model for bootstrap verification only. The final judge path still targets `qwen3-vl:4b`.
+Set `BOOTSTRAP_FALLBACK_MODELS` if you want to change the local fallback list.
 
 The implementation phases in `../plan.md` define the exact behavior each command must support.
 

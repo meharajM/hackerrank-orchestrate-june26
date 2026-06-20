@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import Optional
 
 from ..models.base import ModelAdapter
+from ..prompting import PromptProvider
+from ..runtime import RuntimeSettings
 from ..schemas import (
     ClaimInput,
     ClaimOutput,
@@ -28,17 +30,26 @@ def run_staged_pipeline(
     claim: ClaimInput,
     model: ModelAdapter,
     dataset_dir: Path,
+    stage2_model: ModelAdapter | None = None,
     user_history: Optional[UserHistory] = None,
     evidence_requirements: Optional[list[EvidenceRequirement]] = None,
+    prompt_provider: PromptProvider | None = None,
+    runtime_settings: RuntimeSettings | None = None,
 ) -> ClaimOutput:
     """Run Strategy B: Staged pipeline.
 
     Connects claim parser, per-image reviewer, aggregator, and adjudicator.
     """
     logger.info(f"Running Staged Pipeline (Strategy B) for claim: {claim.user_id}")
+    stage2_model = stage2_model or model
 
     # 1. Parse claim
-    parsed_claim = parse_claim(claim, model)
+    parsed_claim = parse_claim(
+        claim,
+        model,
+        prompt_provider=prompt_provider,
+        runtime_settings=runtime_settings,
+    )
 
     # 2. Resolve image paths
     image_info = resolve_all_image_paths(claim.image_paths, dataset_dir)
@@ -46,7 +57,13 @@ def run_staged_pipeline(
     observations = []
     for img_id, img_path, exists in image_info:
         # Review image (handles missing file cases internally)
-        obs = review_image(img_path, parsed_claim, model)
+        obs = review_image(
+            img_path,
+            parsed_claim,
+            stage2_model,
+            prompt_provider=prompt_provider,
+            runtime_settings=runtime_settings,
+        )
         observations.append(obs)
 
     # 3. Aggregate evidence

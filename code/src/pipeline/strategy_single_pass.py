@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import Optional
 
 from ..models.base import ModelAdapter
+from ..prompting import PromptProvider
+from ..runtime import RuntimeSettings
 from ..schemas import (
     ClaimInput,
     ClaimOutput,
@@ -26,6 +28,8 @@ def run_single_pass_pipeline(
     dataset_dir: Path,
     user_history: Optional[UserHistory] = None,
     evidence_requirements: Optional[list[EvidenceRequirement]] = None,
+    prompt_provider: PromptProvider | None = None,
+    runtime_settings: RuntimeSettings | None = None,
 ) -> ClaimOutput:
     """Run Strategy A: Single-pass holistic pipeline.
 
@@ -39,4 +43,5 @@ def run_single_pass_pipeline(
         dataset_dir=dataset_dir,
         user_history=user_history,
         evidence_requirements=evidence_requirements,
+        prompt_provider=prompt_provider,
     )

@@ -19,5 +19,17 @@ def clean_and_load_json(text: str) -> dict:
     match = re.search(r"\{[\s\S]*\}", clean_text)
     if match:
         clean_text = match.group(0)
-        
-    return json.loads(clean_text)
+
+    try:
+        return json.loads(clean_text)
+    except json.JSONDecodeError:
+        repaired = _repair_common_json_issues(clean_text)
+        return json.loads(repaired)
+
+
+def _repair_common_json_issues(text: str) -> str:
+    """Repair common model JSON mistakes without changing the object structure."""
+    repaired = text
+    repaired = re.sub(r",(\s*[}\]])", r"\1", repaired)
+    repaired = re.sub(r'(?<!\\)\\(?![\\/"u])', r"\\\\", repaired)
+    return repaired

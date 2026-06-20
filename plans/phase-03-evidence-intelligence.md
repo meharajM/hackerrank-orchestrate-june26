@@ -42,7 +42,7 @@ High-performing final predictions depend on strong intermediate observations. Th
 3. `pydantic`
 4. `Pillow`
 5. optional `opencv-python`
-6. `Ollama` for local `gemma4:e4b` fallback
+6. `Ollama` for local `qwen3-vl:4b` fallback
 
 ## Implementation Steps
 
@@ -65,7 +65,7 @@ High-performing final predictions depend on strong intermediate observations. Th
 11. Run the components on a labeled subset and inspect failures before wiring them into final adjudication.
 12. Add mock adapter tests that validate schema contracts without live provider credentials.
 13. Make live Gemini smoke tests credential-dependent and skippable when `GEMINI_API_KEY` is absent.
-14. Implement the local adapter through Ollama and model `gemma4:e4b`.
+14. Implement the local adapter through Ollama and model `qwen3-vl:4b`.
 15. Use the Google Gen AI SDK package `google-genai` for hosted Gemini calls.
 
 ## Deliverables
@@ -111,7 +111,7 @@ Phase 3 is complete only if all of the following are true:
 3. Delay Gemini escalation tuning until the staged primary pipeline is stable.
 4. Do not implement Anthropic in this phase.
 5. Do not implement OpenAI in this phase.
-6. Use Ollama as the concrete local runtime and `gemma4:e4b` as the concrete local model.
+6. Use Ollama as the concrete local runtime and `qwen3-vl:4b` as the concrete local model.
 
 ## Slices
 
@@ -158,10 +158,10 @@ all sample images return schema-valid observation objects.
 ### Slice 3.6: Local Gemma adapter
 
 Scope:
-implement `models/ollama_adapter.py` behind the same interface, targeting local model `gemma4:e4b`.
+implement `models/ollama_adapter.py` behind the same interface, targeting local model `qwen3-vl:4b`.
 
 Verification:
-one sample subset can run through Ollama `gemma4:e4b` and return schema-valid observations.
+one sample subset can run through Ollama `qwen3-vl:4b` and return schema-valid observations.
 If Ollama is missing or the model is not pulled, the adapter must fail with the exact setup command needed.
 
 ### Slice 3.7: Escalation-candidate signals

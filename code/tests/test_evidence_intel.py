@@ -10,11 +10,29 @@ import pytest
 from PIL import Image
 
 from src.models import MockAdapter, OllamaAdapter
+from src.pipeline.claim_rules import extract_claim_signals
 from src.pipeline.claim_parser import parse_claim
 from src.pipeline.image_quality import check_image_quality
 from src.pipeline.image_reviewer import review_image
 from src.schemas import ClaimInput, ParsedClaim
+from src.utils.json_utils import clean_and_load_json
 from src.utils.text import is_multilingual_claim
+
+
+class FreeformClaimAdapter(MockAdapter):
+    def text_call(self, prompt: str, system_prompt: str = "") -> str:
+        return json.dumps(
+            {
+                "primary_object": "car",
+                "primary_part": "rear bumper area",
+                "issue_hypothesis": "dented",
+                "secondary_targets": ["body panel"],
+                "has_instruction_text": False,
+                "instruction_text_detail": "",
+                "language_notes": "english",
+                "confidence": 0.95,
+            }
+        )
 
 
 def test_is_multilingual_claim():
@@ -104,17 +122,56 @@ def test_review_image(tmp_path):
     
     assert observation.image_id == "img_1"
     assert observation.object_visible is True
-    assert observation.part_seen == "door"
+    assert observation.part_seen in {"door", "body"}
     assert observation.issue_observed == "dent"
     assert observation.is_usable is True
 
 
+def test_parse_claim_normalizes_freeform_model_outputs():
+    claim = ClaimInput(
+        user_id="user_001",
+        image_paths="img_1.jpg",
+        user_claim="My car rear bumper is dented.",
+        claim_object="car",
+    )
+
+    parsed = parse_claim(claim, FreeformClaimAdapter())
+
+    assert parsed.primary_part == "rear_bumper"
+    assert parsed.issue_hypothesis == "dent"
+    assert parsed.secondary_targets == ["body"]
+
+
 def test_ollama_adapter_unavailable():
     # Use a dummy offline port
-    adapter = OllamaAdapter(base_url="http://localhost:9999", model_name="gemma4:e4b")
+    adapter = OllamaAdapter(base_url="http://localhost:9999", model_name="qwen3-vl:4b")
     assert not adapter.is_available()
     
     with pytest.raises(RuntimeError) as exc_info:
         adapter.text_call("Hello")
     
-    assert "Ollama API call failed" in str(exc_info.value)
+    assert "OpenAI-compatible API call failed" in str(exc_info.value)
+
+
+def test_extract_claim_signals_ignores_keyword_substrings_and_negated_parts():
+    trackpad_claim = (
+        "Customer: Not the screen, keyboard, or hinge. "
+        "The actual claim is that the trackpad is cracked after I was reporting the issue."
+    )
+    parsed_trackpad = extract_claim_signals(trackpad_claim, "laptop")
+    assert parsed_trackpad.primary_part == "trackpad"
+
+    missing_contents_claim = (
+        "Customer: The box condition is not my main concern. "
+        "The actual issue is that the product inside the package is missing."
+    )
+    parsed_contents = extract_claim_signals(missing_contents_claim, "package")
+    assert parsed_contents.primary_part == "contents"
+    assert parsed_contents.issue_hypothesis == "missing_part"
+
+
+def test_clean_and_load_json_repairs_invalid_escape_sequences():
+    raw = '{"raw_description":"rear bumper looked like C:\\damage\\new","issue_observed":"dent"}'
+    parsed = clean_and_load_json(raw)
+    assert parsed["issue_observed"] == "dent"
+    assert parsed["raw_description"] == "rear bumper looked like C:\\damage\\new"

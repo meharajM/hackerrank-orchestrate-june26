@@ -143,16 +143,16 @@ if ! command -v ollama >/dev/null 2>&1; then
 fi
 
 ollama list >/dev/null 2>&1 || (ollama serve >/tmp/ollama.log 2>&1 & sleep 3)
-ollama pull gemma4:e4b
-ollama run gemma4:e4b ""
+ollama pull qwen3-vl:4b
+ollama run qwen3-vl:4b ""
 ```
 
 Implementation requirements:
 
 1. `code/requirements.txt` must include `google-genai`, `pydantic`, `pytest`, `Pillow`, and any other implemented dependency.
 2. Hosted Gemini calls must read `GEMINI_API_KEY` from the environment.
-3. Local fallback calls must use Ollama with model `gemma4:e4b`.
-4. If Ollama or `gemma4:e4b` is unavailable, the code must fail with a clear setup message or continue through the hosted Gemini path when configured.
+3. Local fallback calls must use Ollama with model `qwen3-vl:4b`.
+4. If Ollama or `qwen3-vl:4b` is unavailable, the code must fail with a clear setup message or continue through the hosted Gemini path when configured.
 5. Do not bundle local model weights or generated model caches in `code.zip`.
 
 ## Confirmed Architecture Direction
@@ -184,8 +184,23 @@ Stage 3 is conditional. It must not run on every row by default.
 1. **Phase 1 (Foundation)**: Complete. Schema definition, mock adapter, and CLI smoke run successfully validated.
 2. **Phase 2 (Evaluation)**: Complete. Evaluation harness (`code/evaluation/main.py`), reporting, metrics calculation, and tests implemented and verified.
 3. **Phase 3 (Evidence Intelligence)**: Complete. Implemented claim parser, Image Quality checker (Pillow-based), per-image review pipeline, Ollama adapter, and unit tests.
-4. **Phase 4 (Adjudication & Ensemble)**: Implemented but still open on quality. Aggregation, adjudication, and strategy A/B/C code paths exist, but the current checked-in Strategy B evaluation report shows `0/20` row exact-match on `dataset/sample_claims.csv`, so this phase is not yet complete from a submission-quality perspective.
-5. **Phase 5 (Scale, Throughput, and Cost)**: Partially implemented and verified. Telemetry, file-backed caching, and resumable batch execution exist; review also corrected the resumability key to use full claim identity rather than `user_id`, corrected telemetry/cost accounting to use per-row deltas, and hardened cache writes against overlapping-run corruption. Verified on mock sample runs: cold run `0/49` cache hits, warm rerun `49/49` cache hits.
+4. **Phase 4 (Adjudication & Ensemble)**: Implemented and improved, but still open on live-model quality. After the latest deterministic claim-parsing and risk-policy pass, the mock Strategy B sample baseline improved from `0/20` to `4/20` exact-match, with risk-flag F1 rising from `25.2%` to `73.5%`. This confirms the policy layer is moving in the right direction, but Phase 4 remains open until the same logic is validated with a real multimodal model.
+5. **Phase 5 (Scale, Throughput, and Cost)**: Structurally complete from a refactor standpoint, but still open on operational evidence and live-model quality. The codebase now has an importable single-claim service, an importable batch runner, repository/provider abstractions for history/requirements/cache/telemetry/prompt sourcing, explicit runtime settings, installable package metadata, env-driven local model selection, a thin CLI wrapper, a pluggable batch-execution seam, a composable prompt harness with always-on security fragments, and a scripted Ollama sample-evaluation path. Strategy `B` and `C` can now split the local base adapter from the local Stage 2 reviewer, with `qwen3-vl:4b` wired as the dedicated Stage 2 local model. Remaining Phase 5 work is real multimodal throughput evidence, cache-hit / runtime reporting, and a final operational report artifact.
+6. **Phase 6 (Finalization, Freeze, and Submission Readiness)**: Not started. Final strategy freeze, final `output.csv`, final evaluation report, `code.zip`, and submission audit remain open.
+
+## Frozen Policy Decisions
+
+These decisions are now the intended default unless live-model evidence proves they hurt hidden-set generalization:
+
+1. Cross-image identity conflicts default to `not_enough_information`, because the image set is not reliable enough to verify the claim.
+2. When the claimed part is visible and the observed condition materially differs from the claim, default to `contradicted`.
+3. Reserve `manual_review_required` for substantive review blockers such as authenticity concerns, cross-image mismatch, explicit manipulation, or user-history risk. Do not fire it for every basic visibility issue by default.
+
+## Immediate Remaining Work
+
+1. Run Strategy B with a real local or hosted multimodal model and replace mock-only quality conclusions with live metrics.
+2. Capture Phase 5 operational evidence: local runtime, rerun cache behavior, escalation behavior, and model-cost assumptions in a stable report artifact.
+3. Freeze the final production strategy and generate final submission artifacts under Phase 6.
 
 ## Execution Rules
 
@@ -319,17 +334,17 @@ Reasoning:
 1. Primary Stage 2 hosted path:
    `Gemini free tier direct`.
 2. Local baseline and fallback:
-   `Ollama` running `gemma4:e4b`.
+   `Ollama` running `qwen3-vl:4b`.
 3. Stage 3 conditional escalation:
    use `Gemini hosted re-review` with the same Google provider path; do not implement OpenAI.
-4. Local `gemma4:e4b` role:
+4. Local `qwen3-vl:4b` role:
    benchmark and fallback only, not the first-class default main path.
 5. Stage 3 gate policy:
    `balanced gates`.
 6. Stage 3 budget policy:
    `zero direct paid spend by default`; report quota usage and disable escalation if free quota is unavailable.
 7. Initial provider implementation scope:
-   `Gemini + Ollama gemma4:e4b + mock adapter`.
+   `Gemini + Ollama qwen3-vl:4b + mock adapter`.
 8. Do not implement OpenAI or Anthropic unless the user explicitly changes the provider scope.
 
 ## Recommended Model Stack
@@ -341,7 +356,7 @@ Reasoning:
 2. Primary per-image reviewer:
    `Gemini free tier` direct.
 3. Optional local-only baseline:
-   `Ollama` with `gemma4:e4b`.
+   `Ollama` with `qwen3-vl:4b`.
 
 ### Conditional escalation path
 
@@ -364,7 +379,7 @@ Choose providers and models using these rules in order:
 ## Confirmed Execution Decisions
 
 1. Use `Gemini free tier direct` as the primary no-spend hosted path.
-2. Use `Ollama` with `gemma4:e4b` as the local offline baseline and fallback.
+2. Use `Ollama` with `qwen3-vl:4b` as the local offline baseline and fallback.
 3. Keep hosted re-review only as `Stage 3 escalation`, not as a full-dataset default.
 4. Use Gemini as the only hosted provider unless the user later changes direction.
 5. Treat free quota and no direct API spend as constraints; report quota usage in the operational analysis.
@@ -375,13 +390,13 @@ Choose providers and models using these rules in order:
 
 ## Local Runtime Decision
 
-The local runtime is locked to `Ollama` with model `gemma4:e4b`.
+The local runtime is locked to `Ollama` with model `qwen3-vl:4b`.
 
 Implementation rules:
 
 1. Use Ollama only as a local benchmark/fallback unless evaluation shows it beats Gemini on a specific slice.
 2. Include setup commands in `README.md`, `code/README.md`, and `AGENTS.md`.
-3. The setup command must download `gemma4:e4b` during setup with `ollama pull gemma4:e4b`.
+3. The setup command must download `qwen3-vl:4b` during setup with `ollama pull qwen3-vl:4b`.
 4. Local model weights, Ollama caches, and generated provider caches must not be included in `code.zip`.
 5. If local setup fails on a judge machine but `GEMINI_API_KEY` is available, the final system should still run through the Gemini path.
 
@@ -412,6 +427,6 @@ Rules:
 
 ## What To Do Next
 
-1. Improve Stage 1 parsing and Stage 2 image-review quality before doing more Phase 5 optimization work.
-2. Keep Phase 5 marked partial until the evaluation report includes real escalation economics and a non-mock throughput rehearsal.
-3. Do not begin Phase 6 freeze/package work until sample quality materially improves and the chosen strategy has a credible operational report.
+1. Improve Stage 1 parsing, Stage 2 image review, mismatch handling, and adjudication quality; architecture refactoring is no longer the main bottleneck.
+2. Produce a stronger `evaluation/evaluation_report.md` with real escalation economics, operational assumptions, and a verified non-mock rehearsal path where feasible.
+3. Do not treat Phase 6 as complete until both are true: `output.csv` is produced by the refactored batch path and the selected strategy materially improves on the sample-set quality metrics.

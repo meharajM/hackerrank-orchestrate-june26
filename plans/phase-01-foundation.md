@@ -67,7 +67,7 @@ This repo can be lost before model quality becomes relevant if the pipeline mish
    missing columns, wrong column order, invalid enums, and missing files.
 10. Document how to run the foundation smoke path in `code/README.md`.
 11. Include the judge setup commands in `code/README.md`:
-   Python venv, dependency install, `GEMINI_API_KEY`, Ollama install, and `ollama pull gemma4:e4b`.
+   Python venv, dependency install, `GEMINI_API_KEY`, Ollama install, and `ollama pull qwen3-vl:4b`.
 
 ## Deliverables
 

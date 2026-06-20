@@ -4,21 +4,17 @@ Smoke tests for the full pipeline run and path resolutions.
 from __future__ import annotations
 
 import csv
-import importlib.util
+import json
 from pathlib import Path
 
+from src.batch_runner import claim_identity, load_completed_claim_keys
 from src.config import get_config
 from src.csv_io import read_claims, write_output
 from src.image_io import resolve_all_image_paths
 from src.models import MockAdapter
+from src.pipeline.smoke_evidence import run_smoke
 from src.pipeline.reviewer import review_claim
 from src.schemas import OUTPUT_COLUMNS
-
-_MAIN_PATH = Path(__file__).resolve().parent.parent / "main.py"
-_MAIN_SPEC = importlib.util.spec_from_file_location("repo_main", _MAIN_PATH)
-repo_main = importlib.util.module_from_spec(_MAIN_SPEC)
-assert _MAIN_SPEC.loader is not None
-_MAIN_SPEC.loader.exec_module(repo_main)
 
 
 def test_resolve_paths_for_all_rows():
@@ -111,6 +107,17 @@ def test_resume_identity_uses_full_claim_row_not_just_user_id(tmp_path):
             }
         )
 
-    completed = repo_main._load_completed_claim_keys(output_path)
-    assert repo_main._claim_identity(row_a) in completed
-    assert repo_main._claim_identity(row_b) not in completed
+    completed = load_completed_claim_keys(output_path)
+    assert claim_identity(row_a) in completed
+    assert claim_identity(row_b) not in completed
+
+
+def test_stage2_harness_dumps_do_not_overwrite_repeated_users(tmp_path):
+    run_smoke(adapter_name="mock", limit=5, output_dir=tmp_path)
+
+    dumped = sorted(tmp_path.glob("claim_*.json"))
+    assert len(dumped) == 5
+    assert len({path.name for path in dumped}) == 5
+
+    payload = json.loads(dumped[0].read_text(encoding="utf-8"))
+    assert "stage_2_observations" in payload

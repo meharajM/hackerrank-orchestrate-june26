@@ -45,6 +45,7 @@ def adjudicate(evidence: AggregatedEvidence) -> ClaimOutput:
     
     # Gather all risk flags from evidence
     risk_flags_list = list(evidence.risk_flags)
+    has_wrong_object_flag = "wrong_object" in risk_flags_list
     
     # ── Precedence Rules ────────────────────────────────────────────────
     
@@ -124,19 +125,29 @@ def adjudicate(evidence: AggregatedEvidence) -> ClaimOutput:
         claim_status = ClaimStatus.SUPPORTED
         valid_image = "true"
         evidence_standard_met = "true" if evidence.evidence_sufficient else "false"
-        
+
         # Get matching observations
         matching_obs = [o for o in usable_obs if o.relevant_part_visible and o.issue_matches_claim]
         best_obs = sorted(matching_obs, key=lambda o: o.confidence, reverse=True)[0]
-        
+
         # Use best issue and severity
         issue_type = IssueType(evidence.best_issue_observed) if evidence.best_issue_observed in [e.value for e in IssueType] else IssueType.UNKNOWN
         object_part = normalize_object_part(best_obs.part_seen if best_obs.part_seen != "unknown" else parsed.primary_part, claim.claim_object)
         severity = Severity(evidence.best_severity) if evidence.best_severity in [e.value for e in Severity] else Severity.UNKNOWN
-        
-        esm_reason = "Minimum evidence requirements satisfied." if evidence.evidence_sufficient else "Evidence requirements partially met but insufficient overall."
-        status_justification = f"Claim supported: damage '{parsed.issue_hypothesis}' observed on '{object_part}' in image {best_obs.image_id}."
-        supporting_image_ids_list = [o.image_id for o in matching_obs]
+
+        if evidence.evidence_sufficient and not has_wrong_object_flag:
+            esm_reason = "Minimum evidence requirements satisfied."
+            status_justification = f"Claim supported: damage '{parsed.issue_hypothesis}' observed on '{object_part}' in image {best_obs.image_id}."
+            supporting_image_ids_list = [o.image_id for o in matching_obs]
+        else:
+            claim_status = ClaimStatus.NOT_ENOUGH_INFORMATION
+            evidence_standard_met = "false"
+            esm_reason = "A matching close-up exists, but the image set is not reliable enough to verify the full claim."
+            status_justification = (
+                f"Not enough information: image {best_obs.image_id} appears consistent with the claim, "
+                "but the full image set does not meet the evidence standard."
+            )
+            supporting_image_ids_list = [o.image_id for o in matching_obs]
 
     # Rule 7: Part visible, damage observed but mismatch (contradicted or mismatch)
     elif any(o.is_usable and o.relevant_part_visible and o.issue_observed not in ("none", "unknown") for o in usable_obs):

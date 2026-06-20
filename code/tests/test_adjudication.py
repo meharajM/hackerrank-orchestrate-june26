@@ -81,7 +81,7 @@ def test_aggregate_observations_insufficient():
     ]
     evidence = aggregate_observations(claim_input, parsed_claim, observations)
     assert evidence.evidence_sufficient is False
-    assert "manual_review_required" in evidence.risk_flags
+    assert "manual_review_required" not in evidence.risk_flags
     assert "insufficient_evidence" in evidence.escalation_reasons
 
 def test_adjudicate_wrong_object():
@@ -242,6 +242,53 @@ def test_adjudicate_text_instruction():
     
     assert "text_instruction_present" in output.risk_flags
     assert "manual_review_required" in output.risk_flags
+
+
+def test_adjudicate_matching_closeup_with_conflicting_context_is_not_enough_information():
+    claim_input = ClaimInput(
+        user_id="user_123",
+        image_paths="img_1.jpg;img_2.jpg",
+        user_claim="Front bumper scratch",
+        claim_object="car"
+    )
+    parsed_claim = ParsedClaim(
+        primary_object="car",
+        primary_part="front_bumper",
+        issue_hypothesis="scratch"
+    )
+    observations = [
+        ImageObservation(
+            image_id="img_1",
+            object_visible=True,
+            object_type_seen="car",
+            relevant_part_visible=True,
+            part_seen="front_bumper",
+            issue_observed="scratch",
+            issue_matches_claim=True,
+            severity_estimate="low",
+            is_usable=True,
+            confidence=0.9
+        ),
+        ImageObservation(
+            image_id="img_2",
+            object_visible=True,
+            object_type_seen="laptop",
+            relevant_part_visible=False,
+            part_seen="screen",
+            issue_observed="crack",
+            issue_matches_claim=False,
+            severity_estimate="medium",
+            is_usable=True,
+            confidence=0.8
+        ),
+    ]
+
+    evidence = aggregate_observations(claim_input, parsed_claim, observations)
+    output = adjudicate(evidence)
+
+    assert "wrong_object" in output.risk_flags
+    assert output.claim_status == "not_enough_information"
+    assert output.evidence_standard_met == "false"
 
 def test_strategy_staged_run():
     claim_input = ClaimInput(

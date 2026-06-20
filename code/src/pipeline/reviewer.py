@@ -5,13 +5,13 @@ to produce the complete structured output. This is the primary strategy.
 """
 from __future__ import annotations
 
-import json
 import logging
-import re
 from pathlib import Path
 from typing import Optional
 
 from ..models.base import ModelAdapter
+from ..prompting import PromptProvider, resolve_prompt
+from ..runtime import RuntimeSettings
 from ..schemas import (
     ClaimInput,
     ClaimOutput,
@@ -272,11 +272,18 @@ def review_claim(
     dataset_dir: Path,
     user_history: Optional[UserHistory] = None,
     evidence_requirements: list[EvidenceRequirement] | None = None,
+    prompt_provider: PromptProvider | None = None,
 ) -> ClaimOutput:
     """Run the full holistic review for a single claim.
 
     This is the main entry point for the primary review strategy.
     """
+    if prompt_provider is None:
+        from ..config import get_config
+        from ..prompting import FilePromptProvider
+
+        prompt_provider = FilePromptProvider(get_config().prompts_dir)
+
     # Resolve image paths
     image_info = resolve_all_image_paths(claim.image_paths, dataset_dir)
     image_paths = []
@@ -297,13 +304,19 @@ def review_claim(
         evidence_requirements=evidence_requirements or [],
         image_ids=image_ids,
     )
+    system_prompt = resolve_prompt(
+        prompt_provider,
+        name="holistic_reviewer",
+        fallback=HOLISTIC_SYSTEM_PROMPT,
+        shared_sections=("json_only", "vision_grounding", "history_context"),
+    )
 
     # Call model
     try:
         response, was_cached = model.cached_multimodal_call(
             prompt=prompt,
             image_paths=image_paths,
-            system_prompt=HOLISTIC_SYSTEM_PROMPT,
+            system_prompt=system_prompt,
         )
     except Exception as e:
         logger.error(f"Model call failed for {claim.user_id}: {e}")

@@ -56,7 +56,8 @@ claims.csv Row
 ### 2.2 Model Adapters (`src/models/`)
 - **ModelAdapter Interface**: Abstract base class defining `text_call`, `multimodal_call`, `is_available`, and telemetry hook `get_stats`.
 - **GeminiAdapter**: Communicates with Google's Developer API using `google-genai` and uses `system_instruction` in the generate configuration.
-- **OllamaAdapter**: Leverages local HTTP requests (`httpx`) to communicate with a local Ollama server running lightweight open models (`gemma4:e4b`).
+- **OpenAICompatibleAdapter**: Provides a reusable provider surface for OpenAI-compatible chat-completions endpoints, including custom base URLs and multimodal image payloads.
+- **OllamaAdapter**: Now sits on top of Ollama's OpenAI-compatible `/v1/chat/completions` API instead of a custom local-only request shape. The current local default uses `qwen3-vl:4b`, and Strategy `B`/`C` can still override Stage 2 independently when needed.
 - **MockAdapter**: Simulates realistic, schema-valid JSON responses based on prompt keywords, enabling offline smoke tests and regressions at zero spend.
 
 ### 2.3 Evidence Pipelines (`src/pipeline/`)
@@ -72,10 +73,17 @@ claims.csv Row
 
 ### 2.4 Application Service Boundary (`src/claim_processing.py`)
 - **Single-claim orchestration API**: The codebase now exposes an importable `process_claim(...)` boundary plus `process_claim_batch(...)` for reusable batch execution.
-- **Reusable context object**: `ClaimProcessingContext` packages dataset location, models, repositories, cache, telemetry, and cost tracking so the same runtime can be shared across CLI, tests, and future hosted services.
+- **Reusable context object**: `ClaimProcessingContext` packages dataset location, the base model, the dedicated Stage 2 model, repositories, cache, telemetry, and cost tracking so the same runtime can be shared across CLI, tests, and future hosted services.
 - **Builder entrypoint**: `build_claim_processing_context(...)` centralizes dependency wiring, reducing the amount of orchestration logic left inside `code/main.py`.
+- **Stage-aware local wiring**: Strategy `B` and Strategy `C` can now keep a cheaper base adapter while routing per-image validation through a stronger local vision model.
+- **Batch execution seam**: `process_claim_batch(...)` now supports a pluggable batch executor, with `SequentialClaimExecutor` as the default. This is the clean insertion point for future delegated or worker-based claim execution without leaking orchestration logic into the CLI.
 - **Public package surface**: `src/__init__.py` now exports the core claim-processing entrypoints for import-based consumers.
 - **Installable distribution metadata**: `code/pyproject.toml` now defines an editable-install path for the current `src` and `evaluation` packages, which reduces reliance on ad hoc path bootstrapping.
+
+### 2.8 Batch Runner Boundary (`src/batch_runner.py`)
+- **Importable batch execution API**: `run_batch(...)` now owns resumability, CSV output appends, telemetry flushing, and end-to-end batch summaries instead of leaving those concerns inside the CLI module.
+- **Explicit batch request/response contract**: `BatchRunRequest` and `BatchRunResult` provide a service-friendly transport shape for CLI, job, and hosted batch execution.
+- **Thin CLI wrapper**: `code/main.py` is now mostly argument parsing plus context construction around the reusable batch runner.
 
 ### 2.5 Repository Abstractions (`src/history.py`, `src/requirements.py`)
 - **History repository interface**: claim processing now depends on a `HistoryRepository` protocol instead of assuming CSV-backed history lookups.
@@ -87,6 +95,14 @@ claims.csv Row
 - **Event sink interface**: per-claim telemetry emission can target any `EventSink`, with `EventLogger` remaining the current in-memory and JSON-flush implementation.
 - **Cost recorder interface**: token and spend accounting now hangs off a `CostRecorder` protocol so hosted runtimes can swap the default `CostTracker` for external accounting sinks.
 - **Injection path is active**: `build_claim_processing_context(...)` now accepts injected cache, telemetry, and cost components while preserving the existing local defaults.
+
+### 2.7 Prompt And Runtime Settings Layer (`src/prompting.py`, `src/runtime.py`)
+- **Prompt provider interface**: prompt templates and system prompts can now be sourced through a `PromptProvider` protocol instead of being read ad hoc inside pipeline modules.
+- **Composable prompt harness**: `FilePromptProvider` now composes prompt fragments from `src/prompts/_shared/` plus stage-specific prompt files, so always-on security guidance is injected once and optional fragments are loaded only for the stages that need them.
+- **Always-on core security**: `core_security.md` is included for every prompt, ensuring prompt-injection resistance across claim text, image text, and user-history context.
+- **Need-based fragment loading**: sections such as `json_only`, `vision_grounding`, and `history_context` are requested at the call site instead of being duplicated wholesale across every prompt file.
+- **Explicit runtime settings**: `RuntimeSettings` now carries system-prompt defaults and escalation thresholds so pipeline behavior is no longer controlled only by scattered literals.
+- **Pipeline propagation is active**: claim parsing, image review, holistic review, and escalation now receive prompt/runtime dependencies through the claim-processing context.
 
 ---
 
@@ -131,5 +147,8 @@ To address the latency, cost, and reliability gaps, the next phase will operatio
 - Packaging friction is lower than before: `evaluation/metrics.py` no longer mutates `sys.path`, and standalone scripts use fallback bootstrapping only when needed.
 - Claim processing is less file-bound than before: the service layer now depends on repository interfaces for history and evidence requirements rather than concrete CSV manager classes.
 - Runtime infrastructure is less local-only than before: cache, telemetry, and cost tracking can now be injected behind protocols instead of being hard-coded file-backed classes.
+- Prompt and behavior configuration are less ad hoc than before: prompt sourcing and escalation settings are now explicit dependencies rather than local file reads and hard-coded thresholds inside pipeline modules.
+- Batch transport is now reusable: the same batch path can be called from the CLI or from imported code, and it has been validated end to end against the required output contract.
+- Verified contract status: mock runs successfully generated `20/20` sample rows and `44/44` test rows with exact required columns, and the evaluation runner successfully consumed the generated sample predictions.
 - The main blocker is no longer basic plumbing; it is prediction quality. The checked-in Strategy B evaluation report currently shows `0/20` exact matches on the labeled sample set.
 - The highest-leverage next work is in prompt quality, mismatch handling, and adjudication quality, not more infrastructure expansion.

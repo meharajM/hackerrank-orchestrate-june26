@@ -225,15 +225,15 @@ if ! command -v ollama >/dev/null 2>&1; then
 fi
 
 ollama list >/dev/null 2>&1 || (ollama serve >/tmp/ollama.log 2>&1 & sleep 3)
-ollama pull gemma4:e4b
-ollama run gemma4:e4b ""
+ollama pull qwen3-vl:4b
+ollama run qwen3-vl:4b ""
 ```
 
 Provider and model decisions:
 
 - Hosted primary path: Gemini Developer API through the `google-genai` Python package.
 - Hosted Stage 3 escalation: Gemini re-review only, gated and disabled if `GEMINI_API_KEY` or quota is unavailable.
-- Local fallback and benchmark: Ollama model `gemma4:e4b`.
+- Local fallback and benchmark: Ollama model `qwen3-vl:4b`.
 - Do not implement OpenAI or Anthropic unless the user explicitly changes this decision.
 - Direct paid API spend defaults to zero. Use free-tier Gemini quota where available and report quota/cost assumptions in `code/evaluation/evaluation_report.md`.
 

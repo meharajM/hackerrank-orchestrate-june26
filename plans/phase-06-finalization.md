@@ -69,7 +69,7 @@ High-quality experimentation is wasted if the final artifacts are inconsistent, 
 3. Do not leave benchmark-only provider branches ambiguous in the README.
 4. The final README must state which environment variables are optional and which are required for the frozen strategy.
 5. The final README must include the macOS/Linux setup sequence:
-   Python venv setup, dependency install, `GEMINI_API_KEY`, Ollama install, and `ollama pull gemma4:e4b`.
+   Python venv setup, dependency install, `GEMINI_API_KEY`, Ollama install, and `ollama pull qwen3-vl:4b`.
 
 ## Verification Gate
 

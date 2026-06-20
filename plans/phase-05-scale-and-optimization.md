@@ -160,22 +160,24 @@ These are the concrete gaps found while reviewing the implemented Phase 5 work. 
    The phase requires escalation-rate, marginal-lift, and projected-cost reporting, but that operational evidence is not yet locked down in a final verified report.
 4. **Full test-set throughput rehearsal is not yet captured as a stable phase artifact**.
    The phase contract calls for a real end-to-end rehearsal with operational summary, not only partial local smoke checks.
-5. **Requirement filtering is still fuzzy and may over-match**.
+5. **Live multimodal validation is still missing**.
+   Recent rule and prompt improvements were validated against the mock path and tests, but the phase still needs a real Ollama or Gemini quality run before the operational report can be trusted.
+6. **Requirement filtering is still fuzzy and may over-match**.
    The current `csv_io.py` requirement filtering uses substring matching and should be tightened before treating it as reusable library logic.
-6. **Aggregation mismatch handling is too coarse**.
+7. **Aggregation mismatch handling is too coarse**.
    Mixed-image claims can be penalized too aggressively when one image is mismatched but another image correctly shows the claimed part.
-7. **Top-level orchestration is still CLI-first instead of library-first**.
+8. **Top-level orchestration is still CLI-first instead of library-first**.
    `code/main.py` owns too much runtime wiring: loading datasets, constructing managers, selecting strategies, handling cache/telemetry, and writing rows.
-8. **Entrypoints still depend on `sys.path` bootstrapping**.
+9. **Entrypoints still depend on `sys.path` bootstrapping**.
    `code/main.py`, `code/evaluation/main.py`, `code/evaluation/metrics.py`, and `code/src/pipeline/smoke_evidence.py` rely on `sys.path.insert(...)`, which is a packaging smell and blocks clean library export.
-9. **There is no stable public import surface for consumers**.
+10. **There is no stable public import surface for consumers**.
    Components exist under `src/`, but there is no curated top-level API for importing claim processors, repositories, strategies, or service-ready facades.
-10. **Single-claim processing is implicit, not modeled as an application service**.
-    Pipelines can process one claim, but there is no dedicated `process_claim(...)` service boundary that a web API, job worker, or external library consumer can call directly.
-11. **Infrastructure dependencies are not fully injectable**.
-    History loading, requirements loading, cache paths, telemetry paths, and model construction are still too coupled to local runtime wiring.
-12. **Cache and telemetry are local-run oriented**.
-    They work for current CLI runs, but they are not yet shaped as replaceable backends for service deployment.
+11. **Single-claim processing is implicit, not modeled as an application service**.
+   Pipelines can process one claim, but there is no dedicated `process_claim(...)` service boundary that a web API, job worker, or external library consumer can call directly.
+12. **Infrastructure dependencies are not fully injectable**.
+   History loading, requirements loading, cache paths, telemetry paths, and model construction are still too coupled to local runtime wiring.
+13. **Cache and telemetry are local-run oriented**.
+   They work for current CLI runs, but they are not yet shaped as replaceable backends for service deployment.
 
 ## Improvements To Land Before Packaging And Service Hosting
 
