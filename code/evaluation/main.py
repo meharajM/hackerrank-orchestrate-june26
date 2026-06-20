@@ -58,8 +58,9 @@ def main():
     parser.add_argument(
         "--model",
         type=str,
+        default=None,
         choices=["gemini", "ollama", "openai_compat", "mock"],
-        help="Optionally run the pipeline dynamically on gold rows with the specified model adapter.",
+        help="Model adapter. Defaults to AI_PROVIDER env var or mock.",
     )
     parser.add_argument(
         "--strategy",
@@ -116,17 +117,18 @@ def main():
         strategy_name = "csv_import"
         model_version = pred_path.name
     elif args.model:
-        # Run pipeline dynamically on gold rows
+        from src.claim_processing import resolve_model_name
         from src.config import get_config
         config = get_config()
+        model_name = resolve_model_name(args.model, config)
         claims = read_claims(gold_path)
-        if args.model == "gemini" and not config.has_gemini:
-            print("Error: GEMINI_API_KEY environment variable is not set. Cannot run dynamic Gemini review.")
+        if model_name == "gemini" and not config.has_gemini and not config.ai_api_key:
+            print("Error: No Gemini API key found. Set GEMINI_API_KEY or AI_API_KEY.")
             sys.exit(1)
 
         context = build_claim_processing_context(
             config=config,
-            model_name=args.model,
+            model_name=model_name,
             strategy=args.strategy,
             cache_enabled=False,
             allow_model_fallback=False,

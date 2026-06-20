@@ -5,8 +5,10 @@ Supports both hosted providers and local servers such as Ollama.
 from __future__ import annotations
 
 import base64
+import json
 import logging
 import os
+import re
 import time
 from pathlib import Path
 from typing import Optional
@@ -31,6 +33,7 @@ class OpenAICompatibleAdapter(ModelAdapter):
         text_timeout: float | None = None,
         multimodal_timeout: float | None = None,
         response_format_json: bool = True,
+        max_tokens: int | None = None,
     ):
         self._model_name = model_name
         self._base_url = _normalize_base_url(base_url or os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1"))
@@ -41,6 +44,11 @@ class OpenAICompatibleAdapter(ModelAdapter):
         self._text_timeout = text_timeout or float(os.environ.get("OPENAI_COMPAT_TEXT_TIMEOUT", os.environ.get("OLLAMA_TEXT_TIMEOUT", "120")))
         self._multimodal_timeout = multimodal_timeout or float(os.environ.get("OPENAI_COMPAT_MULTIMODAL_TIMEOUT", os.environ.get("OLLAMA_MULTIMODAL_TIMEOUT", "300")))
         self._response_format_json = response_format_json
+        self._max_tokens = (
+            max_tokens
+            if max_tokens is not None
+            else int(os.environ.get("OPENAI_COMPAT_MAX_TOKENS", "4096"))
+        )
         self._client = None
         self._call_count = 0
         self._total_input_tokens = 0
@@ -104,7 +112,7 @@ class OpenAICompatibleAdapter(ModelAdapter):
             "model": self._model_name,
             "messages": messages,
             "temperature": 0.1,
-            "max_tokens": 384,
+            "max_tokens": self._max_tokens,
             "timeout": timeout,
         }
         if self._response_format_json:
@@ -121,6 +129,7 @@ class OpenAICompatibleAdapter(ModelAdapter):
                 return response.choices[0].message.content or ""
             except Exception as exc:
                 last_error = exc
+                err_str = str(exc)
                 logger.warning(
                     "OpenAI-compatible call failed (attempt %s/%s) against %s: %s",
                     attempt + 1,
@@ -129,7 +138,14 @@ class OpenAICompatibleAdapter(ModelAdapter):
                     exc,
                 )
                 if attempt < self._max_retries - 1:
-                    time.sleep(self._retry_delay)
+                    retry_delay = self._retry_delay
+                    if "429" in err_str:
+                        retry_delay = _extract_gemini_retry_delay(err_str) or retry_delay
+                        retry_delay = max(retry_delay, 5.0)
+                    elif attempt > 0:
+                        retry_delay *= 2 ** attempt
+                    logger.warning("  waiting %.1fs before retry...", retry_delay)
+                    time.sleep(retry_delay)
 
         raise RuntimeError(
             f"OpenAI-compatible API call failed after {self._max_retries} retries. "
@@ -144,6 +160,9 @@ class OpenAICompatibleAdapter(ModelAdapter):
         except Exception:
             return False
 
+    def set_max_tokens(self, value: int) -> None:
+        self._max_tokens = value
+
     @property
     def name(self) -> str:
         return f"{self._label} ({self._model_name})"
@@ -154,6 +173,14 @@ class OpenAICompatibleAdapter(ModelAdapter):
             "total_input_tokens": self._total_input_tokens,
             "total_output_tokens": self._total_output_tokens,
         }
+
+
+def _extract_gemini_retry_delay(err_str: str) -> float | None:
+    """Extract the retry delay from Gemini's 429 error RetryInfo if present."""
+    match = re.search(r'retryDelay["\']?\s*:\s*["\']?(\d+(?:\.\d+)?)s', err_str)
+    if match:
+        return float(match.group(1))
+    return None
 
 
 def _normalize_base_url(base_url: str) -> str:

@@ -125,11 +125,18 @@ def aggregate_observations(
     # 4. Collect risk flags
     collected_flags = set()
     
-    # Flags from image quality checks
+    # Flags from image quality checks (ignore non-quality tokens that models may emit)
+    quality_flag_values = {
+        "blurry_image",
+        "cropped_or_obstructed",
+        "low_light_or_glare",
+        "wrong_angle",
+        "damage_not_visible",
+    }
     for obs in observations:
         for q in obs.quality_issues:
             q_clean = q.strip().lower()
-            if q_clean and q_clean != "none":
+            if q_clean and q_clean != "none" and q_clean in quality_flag_values:
                 collected_flags.add(q_clean)
                 
     # Model-detected mismatches or invalid states

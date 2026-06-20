@@ -45,6 +45,9 @@ ensure_legacy_server_stopped() {
 }
 
 ensure_server() {
+  if [[ -z "${OLLAMA_BIN}" ]]; then
+    OLLAMA_BIN="$(resolve_ollama_bin)"
+  fi
   if ! curl -fsS "${HOST}/api/tags" >/dev/null 2>&1; then
     echo "Starting Ollama server from ${OLLAMA_BIN}..." >&2
     nohup env OLLAMA_HOST="${BIND_HOST}" OLLAMA_FLASH_ATTENTION=1 OLLAMA_KV_CACHE_TYPE=q8_0 OLLAMA_MAX_LOADED_MODELS=1 OLLAMA_NUM_PARALLEL=1 "${OLLAMA_BIN}" serve >/tmp/ollama.log 2>&1 &
@@ -94,7 +97,9 @@ select_multimodal_model() {
 }
 
 ensure_base_model() {
-  OLLAMA_BIN="$(resolve_ollama_bin)"
+  if [[ -z "${OLLAMA_BIN}" ]]; then
+    OLLAMA_BIN="$(resolve_ollama_bin)"
+  fi
   ensure_legacy_server_stopped
   ensure_server
   if "${OLLAMA_BIN}" ls | awk '{print $1}' | grep -qx "${TARGET_MODEL}"; then
@@ -126,6 +131,8 @@ ensure_base_model() {
   exit 1
 }
 
+OLLAMA_BIN="$(resolve_ollama_bin)"
+export OLLAMA_BIN
 BASE_MODEL="$(ensure_base_model)"
 MODEL="$(select_multimodal_model "${TARGET_STAGE2_MODEL}" "${STAGE2_FALLBACK_MODELS}")"
 

@@ -15,6 +15,7 @@ from .claim_processing import (
     build_model_adapter,
     process_claim,
     process_claim_batch,
+    resolve_model_name,
 )
 from .history import FileHistoryRepository, HistoryRepository
 from .prompting import FilePromptProvider, PromptProvider

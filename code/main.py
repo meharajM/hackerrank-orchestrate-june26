@@ -42,9 +42,9 @@ def main():
     parser.add_argument(
         "--model",
         type=str,
-        default="mock",
+        default=None,
         choices=["gemini", "ollama", "openai_compat", "mock"],
-        help="Model adapter to use (gemini, ollama, or mock)",
+        help="Model adapter to use. Defaults to AI_PROVIDER env var or mock.",
     )
     parser.add_argument(
         "--strategy",
@@ -83,10 +83,10 @@ def main():
     )
     if not args.no_cache:
         print(f"Response cache enabled: {context.cache.cache_dir}")
-    if args.model == "gemini" and not config.has_gemini:
-        print("Warning: GEMINI_API_KEY environment variable is not set. Falling back to MockAdapter.")
-    if args.strategy == "C" and not config.has_gemini:
-        print("Warning: GEMINI_API_KEY is not set. Strategy C escalation will fallback to the base model.")
+    if args.model == "gemini" and not config.has_gemini and not config.ai_api_key:
+        print("Warning: GEMINI_API_KEY / AI_API_KEY environment variable is not set. Falling back to MockAdapter.")
+    if args.strategy == "C" and not config.has_gemini and not config.ai_api_key:
+        print("Warning: No API key found. Strategy C escalation will fallback to the base model.")
 
     print(f"Using model adapter(s): {_describe_context_models(context)} with strategy: {args.strategy}")
     result = run_batch(

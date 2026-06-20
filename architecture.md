@@ -1,6 +1,6 @@
 # System Architecture: HackerRank Orchestrate Claims Verification
 
-This document provides a deep architectural analysis of the claims verification system built so far. It outlines the design patterns, data flow, component boundaries, the Phase 5 operational work that is now in place, and the remaining gaps blocking submission quality.
+This document provides a deep architectural analysis of the claims verification system built so far. It outlines the design patterns, data flow, component boundaries, the Phase 5 operational work that is now in place, and the remaining gaps blocking submission quality. The current implementation now includes an importable claim-processing service, an importable batch runner, a composable prompt harness, and a standardized OpenAI-compatible transport layer that can drive the local `qwen3-vl:4b` Stage 2 path or any compatible hosted endpoint.
 
 ---
 
@@ -20,7 +20,7 @@ claims.csv Row
                          ▼
 ┌────────────────────────────────────────────────────────┐
 │          Stage 2: Per-Image Evidence Review            │
-│   (Lightweight Pillow precheck + Multimodal review)    │
+│   (Lightweight Pillow precheck + qwen3-vl:4b review)   │
 └────────────────────────┬───────────────────────────────┘
                          │ List[ImageObservation]
                          ▼
@@ -56,8 +56,8 @@ claims.csv Row
 ### 2.2 Model Adapters (`src/models/`)
 - **ModelAdapter Interface**: Abstract base class defining `text_call`, `multimodal_call`, `is_available`, and telemetry hook `get_stats`.
 - **GeminiAdapter**: Communicates with Google's Developer API using `google-genai` and uses `system_instruction` in the generate configuration.
-- **OpenAICompatibleAdapter**: Provides a reusable provider surface for OpenAI-compatible chat-completions endpoints, including custom base URLs and multimodal image payloads.
-- **OllamaAdapter**: Now sits on top of Ollama's OpenAI-compatible `/v1/chat/completions` API instead of a custom local-only request shape. The current local default uses `qwen3-vl:4b`, and Strategy `B`/`C` can still override Stage 2 independently when needed.
+- **OpenAICompatibleAdapter**: Provides the standardized provider surface for OpenAI-compatible chat-completions endpoints, including custom base URLs, JSON-mode responses, and multimodal image payloads. This is the transport layer used to normalize local and remote chat-completions calls.
+- **OllamaAdapter**: Sits on top of Ollama's OpenAI-compatible `/v1/chat/completions` API instead of a custom local-only request shape. The current local default uses `qwen3-vl:4b`, and Strategy `B`/`C` can still override Stage 2 independently when needed.
 - **MockAdapter**: Simulates realistic, schema-valid JSON responses based on prompt keywords, enabling offline smoke tests and regressions at zero spend.
 
 ### 2.3 Evidence Pipelines (`src/pipeline/`)
@@ -75,7 +75,7 @@ claims.csv Row
 - **Single-claim orchestration API**: The codebase now exposes an importable `process_claim(...)` boundary plus `process_claim_batch(...)` for reusable batch execution.
 - **Reusable context object**: `ClaimProcessingContext` packages dataset location, the base model, the dedicated Stage 2 model, repositories, cache, telemetry, and cost tracking so the same runtime can be shared across CLI, tests, and future hosted services.
 - **Builder entrypoint**: `build_claim_processing_context(...)` centralizes dependency wiring, reducing the amount of orchestration logic left inside `code/main.py`.
-- **Stage-aware local wiring**: Strategy `B` and Strategy `C` can now keep a cheaper base adapter while routing per-image validation through a stronger local vision model.
+- **Stage-aware local wiring**: Strategy `B` and Strategy `C` can now keep a cheaper base adapter while routing per-image validation through a stronger local vision model, typically `qwen3-vl:4b` on the local path.
 - **Batch execution seam**: `process_claim_batch(...)` now supports a pluggable batch executor, with `SequentialClaimExecutor` as the default. This is the clean insertion point for future delegated or worker-based claim execution without leaking orchestration logic into the CLI.
 - **Public package surface**: `src/__init__.py` now exports the core claim-processing entrypoints for import-based consumers.
 - **Installable distribution metadata**: `code/pyproject.toml` now defines an editable-install path for the current `src` and `evaluation` packages, which reduces reliance on ad hoc path bootstrapping.
@@ -111,13 +111,13 @@ claims.csv Row
 Through a comprehensive review of the code developed across Phases 1-4, the following gaps have been analyzed:
 
 ### 3.0 Verified operational fixes landed during review
-- **Resumable runner correctness**: `code/main.py` now checkpoints by full claim identity (`user_id + claim_object + image_paths + user_claim`) instead of `user_id` alone. This prevents false skips on `dataset/claims.csv`, which contains repeated users across different claims.
+- **Resumable runner correctness**: `src/batch_runner.py` now checkpoints by full claim identity (`user_id + claim_object + image_paths + user_claim`) instead of `user_id` alone, with `code/main.py` acting as a thin wrapper. This prevents false skips on `dataset/claims.csv`, which contains repeated users across different claims.
 - **Telemetry and cost accounting**: top-level telemetry now records per-row adapter deltas rather than cumulative totals, so Phase 5 cost and token reporting can be trusted.
 - **Cache write safety**: `src/telemetry/caching.py` now writes cache files atomically and deletes corrupt entries on read failure, which is necessary before introducing real overlap or concurrency.
 
 ### 3.1 Pipeline Concurrency and Latency (High Priority for Phase 5)
-- **Problem**: Claims and images are currently processed sequentially in loops inside [main.py](file:///code/main.py) and [strategy_staged.py](file:///code/src/pipeline/strategy_staged.py). When executing with remote APIs (Gemini), a sequential loop will result in substantial latency (e.g., 20 claims with multiple images will take over a minute).
-- **Resolution**: Phase 5 should introduce request-level concurrency (using python's `ThreadPoolExecutor` or `asyncio` for model adapter calls) capped by `config.max_concurrent_requests` to speed up runtime.
+- **Problem**: Claims and images are still processed sequentially inside [strategy_staged.py](file:///code/src/pipeline/strategy_staged.py). The batch runner is now reusable, but the per-claim image loop remains single-threaded, so remote multimodal review still pays full serialized latency.
+- **Resolution**: Phase 5 should introduce request-level concurrency for per-claim image review or worker-level claim execution, capped by `config.max_concurrent_requests`, once the live-model behavior is stable.
 
 ### 3.2 Robustness of Mismatch Heuristics
 - **Problem**: The aggregator [aggregation.py](file:///code/src/pipeline/aggregation.py) flags `wrong_object_part` if the claimed part is not visible. If an image is usable but shows a different part, it is flagged as a risk, which is correct. However, if the user submits multiple images and only one shows the correct part while others show different parts, the current aggregator may flag `wrong_object_part` for the whole claim because it aggregates via `any(...)` mismatch.
@@ -131,6 +131,10 @@ Through a comprehensive review of the code developed across Phases 1-4, the foll
 - **Problem**: In [csv_io.py](file:///code/src/csv_io.py) line 118, filtering requirements uses a substring check: `if issue_family.lower() in applies or applies in issue_family.lower()`. This can match unintended requirements if name tokens overlap.
 - **Resolution**: While requirements in `evidence_requirements.csv` are relatively sparse, explicit exact matching or category-based mapping is more robust.
 
+### 3.5 Provider Default Alignment
+- **Problem**: `Config.openai_compatible_stage2_model` still defaults to `gpt-4o-mini`, which is not fully aligned with the qwen-first local Stage 2 contract described elsewhere in the repo.
+- **Resolution**: Either make the qwen default explicit for local runs or document the OpenAI-compatible path as a separate hosted fallback so the runtime defaults and architecture notes stay in sync.
+
 ---
 
 ## 4. Next Phase: Scale and Throughput Strategy (Phase 5)
@@ -138,7 +142,7 @@ Through a comprehensive review of the code developed across Phases 1-4, the foll
 To address the latency, cost, and reliability gaps, the next phase will operationalize the system:
 1. **Caching Layer (`src/telemetry/caching.py`)**: Key model calls by input text + image hashes, bypassing LLM execution on identical reruns.
 2. **Telemetry Tracker (`src/telemetry/events.py`, `costing.py`)**: Log token usage, latency, and cost dynamically to report detailed pipeline economics.
-3. **Resumable Batch Output (`main.py`)**: Read existing target CSV paths to skip already processed claims on resume, ensuring safety from aborts.
+3. **Resumable Batch Output (`src/batch_runner.py`)**: Read existing target CSV paths to skip already processed claims on resume, ensuring safety from aborts.
 
 ## 5. Current State After Review
 
@@ -148,6 +152,7 @@ To address the latency, cost, and reliability gaps, the next phase will operatio
 - Claim processing is less file-bound than before: the service layer now depends on repository interfaces for history and evidence requirements rather than concrete CSV manager classes.
 - Runtime infrastructure is less local-only than before: cache, telemetry, and cost tracking can now be injected behind protocols instead of being hard-coded file-backed classes.
 - Prompt and behavior configuration are less ad hoc than before: prompt sourcing and escalation settings are now explicit dependencies rather than local file reads and hard-coded thresholds inside pipeline modules.
+- Model transport is standardized across providers: the OpenAI-compatible adapter now normalizes local and remote chat-completions calls so the same request shape can target Ollama or a compatible hosted endpoint.
 - Batch transport is now reusable: the same batch path can be called from the CLI or from imported code, and it has been validated end to end against the required output contract.
 - Verified contract status: mock runs successfully generated `20/20` sample rows and `44/44` test rows with exact required columns, and the evaluation runner successfully consumed the generated sample predictions.
 - The main blocker is no longer basic plumbing; it is prediction quality. The checked-in Strategy B evaluation report currently shows `0/20` exact matches on the labeled sample set.

@@ -81,6 +81,17 @@ class SequentialClaimExecutor:
         return [process_one(claim, context) for claim in claims]
 
 
+def resolve_model_name(override: str | None = None, config: Optional[Config] = None) -> ModelName:
+    """Resolve the model name from explicit override, AI_PROVIDER env var, or default mock."""
+    if override:
+        return override
+    config = config or get_config()
+    provider = config.ai_provider
+    if provider in ("gemini", "ollama", "openai_compat", "mock"):
+        return provider
+    return "mock"
+
+
 def build_model_adapter(
     model_name: ModelName,
     config: Optional[Config] = None,
@@ -91,20 +102,27 @@ def build_model_adapter(
     config = config or get_config()
 
     if model_name == "gemini":
-        if config.has_gemini:
-            return GeminiAdapter(model_name=config.gemini_model)
+        if config.has_gemini or config.ai_api_key:
+            resolved_model = config.ai_model or config.gemini_model
+            resolved_key = config.ai_api_key or config.gemini_api_key
+            return GeminiAdapter(model_name=resolved_model, api_key=resolved_key)
         if allow_fallback:
             return MockAdapter()
-        raise RuntimeError("GEMINI_API_KEY environment variable is not set.")
+        raise RuntimeError("No Gemini API key found. Set GEMINI_API_KEY or AI_API_KEY.")
 
     if model_name == "ollama":
-        return OllamaAdapter(model_name=config.ollama_model, base_url=config.ollama_base_url)
+        resolved_model = config.ai_model or config.ollama_model
+        resolved_base = config.ai_base_url or config.ollama_base_url
+        return OllamaAdapter(model_name=resolved_model, base_url=resolved_base)
 
     if model_name == "openai_compat":
+        resolved_model = config.ai_model or config.openai_compatible_model
+        resolved_base = config.ai_base_url or config.openai_compatible_base_url
+        resolved_key = config.ai_api_key or config.openai_compatible_api_key
         return OpenAICompatibleAdapter(
-            model_name=config.openai_compatible_model,
-            base_url=config.openai_compatible_base_url,
-            api_key=config.openai_compatible_api_key,
+            model_name=resolved_model,
+            base_url=resolved_base,
+            api_key=resolved_key,
         )
 
     return MockAdapter()
@@ -113,7 +131,7 @@ def build_model_adapter(
 def build_claim_processing_context(
     *,
     config: Optional[Config] = None,
-    model_name: ModelName = "mock",
+    model_name: ModelName | None = None,
     strategy: StrategyName = "B",
     cache_enabled: bool = True,
     cache_dir: Optional[Path] = None,
@@ -128,6 +146,7 @@ def build_claim_processing_context(
 ) -> ClaimProcessingContext:
     """Build a reusable processing context for CLI, batch, or service usage."""
     config = config or get_config()
+    model_name = resolve_model_name(model_name, config)
 
     history_repository = history_repository or FileHistoryRepository(config.user_history_csv)
     requirements_repository = requirements_repository or FileRequirementsRepository(

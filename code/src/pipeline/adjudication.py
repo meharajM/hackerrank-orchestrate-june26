@@ -179,12 +179,7 @@ def adjudicate(evidence: AggregatedEvidence) -> ClaimOutput:
         supporting_image_ids_list = []
 
     # ── Post-processing and Normalization ──────────────────────────────
-    
-    # Ensure manual review flag is added for text instruction or other high-risk triggers
-    if evidence.any_text_instruction:
-        risk_flags_list.append("text_instruction_present")
-        risk_flags_list.append("manual_review_required")
-        
+
     # Serialize fields properly
     serialized_flags = serialize_risk_flags(risk_flags_list)
     serialized_supporting_ids = serialize_image_ids(supporting_image_ids_list)

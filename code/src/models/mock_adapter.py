@@ -138,7 +138,7 @@ class MockAdapter(ModelAdapter):
             "issue_observed": issue_type,
             "issue_matches_claim": True,
             "severity_estimate": severity,
-            "quality_issues": risk_flags,
+            "quality_issues": ["none"],
             "is_usable": True,
             "mismatch_notes": "",
             "has_text_instruction": "text_instruction_present" in risk_flags,

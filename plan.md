@@ -18,7 +18,8 @@ The target solution should not be a single prompt wrapped in glue code. It shoul
 3. Claim parsing that is robust to multilingual, compound, and instruction-like text.
 4. A decision engine that converts observations into final repo enums.
 5. A portfolio of strategies with disagreement-aware escalation.
-6. A measurable optimization loop tied to the repo evaluation requirements.
+6. A reusable service boundary, prompt harness, and provider abstraction layer that can be imported by CLI, batch jobs, or hosted services.
+7. A measurable optimization loop tied to the repo evaluation requirements.
 
 ## Target Architecture
 
@@ -37,6 +38,11 @@ claims.csv row
   -> final schema validator
   -> output.csv row
 
+local or hosted model transport
+  -> OpenAI-compatible chat-completions surface
+  -> Ollama qwen3-vl:4b for local Stage 2 review
+  -> Gemini for hosted Stage 3 escalation
+
 sample_claims.csv
   -> experiment runner
   -> metrics and slice analysis
@@ -52,8 +58,8 @@ code/
   main.py
   evaluation/
     main.py
-    reporting.py
     metrics.py
+    reporting.py
   src/
     config.py
     schemas.py
@@ -61,16 +67,14 @@ code/
     image_io.py
     history.py
     requirements.py
-    prompts/
-      claim_parser.md
-      image_reviewer.md
-      holistic_reviewer.md
-      adjudicator.md
+    runtime.py
+    prompting.py
     models/
       base.py
       gemini_adapter.py
       ollama_adapter.py
       mock_adapter.py
+      openai_compatible_adapter.py
     pipeline/
       claim_parser.py
       image_quality.py
@@ -80,6 +84,7 @@ code/
       strategy_single_pass.py
       strategy_staged.py
       strategy_escalation.py
+    batch_runner.py
     telemetry/
       events.py
       caching.py
@@ -104,9 +109,9 @@ Python is the orchestration layer for the full system. Models are replaceable ba
 | Layer | Responsibility | Python stack |
 |---|---|---|
 | IO and contracts | CSV loading, path resolution, output writing, schema validation | `python3`, `pydantic`, `csv` or `pandas` |
-| Stage 1 | Claim parsing and structured extraction | provider SDK or `httpx`, `pydantic` |
-| Stage 2 | Image loading, local or free inference, per-image observations | `Pillow`, optional `opencv-python`, provider SDKs or local inference runtime |
-| Stage 3 | Conditional Gemini escalation and merge-back | provider SDK or `httpx`, `pydantic` |
+| Stage 1 | Claim parsing and structured extraction | provider SDK or OpenAI-compatible chat completions, `pydantic` |
+| Stage 2 | Image loading, local qwen3-vl:4b review, per-image observations | `Pillow`, optional `opencv-python`, provider SDKs or local inference runtime |
+| Stage 3 | Conditional Gemini escalation and merge-back | provider SDK or OpenAI-compatible transport, `pydantic` |
 | Adjudication | Deterministic business rules and enum mapping | pure Python |
 | Telemetry | caching, cost tracking, retries, experiment metadata | pure Python, `json`, `sqlite3` or local files |
 | Evaluation | metrics, slice analysis, markdown reporting | pure Python, optional `pandas` |
@@ -185,7 +190,7 @@ Stage 3 is conditional. It must not run on every row by default.
 2. **Phase 2 (Evaluation)**: Complete. Evaluation harness (`code/evaluation/main.py`), reporting, metrics calculation, and tests implemented and verified.
 3. **Phase 3 (Evidence Intelligence)**: Complete. Implemented claim parser, Image Quality checker (Pillow-based), per-image review pipeline, Ollama adapter, and unit tests.
 4. **Phase 4 (Adjudication & Ensemble)**: Implemented and improved, but still open on live-model quality. After the latest deterministic claim-parsing and risk-policy pass, the mock Strategy B sample baseline improved from `0/20` to `4/20` exact-match, with risk-flag F1 rising from `25.2%` to `73.5%`. This confirms the policy layer is moving in the right direction, but Phase 4 remains open until the same logic is validated with a real multimodal model.
-5. **Phase 5 (Scale, Throughput, and Cost)**: Structurally complete from a refactor standpoint, but still open on operational evidence and live-model quality. The codebase now has an importable single-claim service, an importable batch runner, repository/provider abstractions for history/requirements/cache/telemetry/prompt sourcing, explicit runtime settings, installable package metadata, env-driven local model selection, a thin CLI wrapper, a pluggable batch-execution seam, a composable prompt harness with always-on security fragments, and a scripted Ollama sample-evaluation path. Strategy `B` and `C` can now split the local base adapter from the local Stage 2 reviewer, with `qwen3-vl:4b` wired as the dedicated Stage 2 local model. Remaining Phase 5 work is real multimodal throughput evidence, cache-hit / runtime reporting, and a final operational report artifact.
+5. **Phase 5 (Scale, Throughput, and Cost)**: Structurally complete from a refactor standpoint, but still open on operational evidence and live-model quality. The codebase now has an importable single-claim service, an importable batch runner, repository/provider abstractions for history/requirements/cache/telemetry/prompt sourcing, explicit runtime settings, installable package metadata, env-driven local model selection, a standardized OpenAI-compatible transport layer, a thin CLI wrapper, a pluggable batch-execution seam, a composable prompt harness with always-on security fragments, and a scripted Ollama sample-evaluation path. Strategy `B` and `C` can now split the local base adapter from the local Stage 2 reviewer, with `qwen3-vl:4b` wired as the dedicated Stage 2 local model. Remaining Phase 5 work is real multimodal throughput evidence, cache-hit / runtime reporting, and a final operational report artifact.
 6. **Phase 6 (Finalization, Freeze, and Submission Readiness)**: Not started. Final strategy freeze, final `output.csv`, final evaluation report, `code.zip`, and submission audit remain open.
 
 ## Frozen Policy Decisions
@@ -199,8 +204,9 @@ These decisions are now the intended default unless live-model evidence proves t
 ## Immediate Remaining Work
 
 1. Run Strategy B with a real local or hosted multimodal model and replace mock-only quality conclusions with live metrics.
-2. Capture Phase 5 operational evidence: local runtime, rerun cache behavior, escalation behavior, and model-cost assumptions in a stable report artifact.
-3. Freeze the final production strategy and generate final submission artifacts under Phase 6.
+2. Capture Phase 5 operational evidence: local qwen3-vl:4b runtime, rerun cache behavior, escalation behavior, and model-cost assumptions in a stable report artifact.
+3. Align the standardized OpenAI-compatible transport defaults with the chosen local and hosted Stage 2 / Stage 3 models.
+4. Freeze the final production strategy and generate final submission artifacts under Phase 6.
 
 ## Execution Rules
 
@@ -295,68 +301,53 @@ The following choices are now confirmed and should be treated as implementation 
 
 ## Recommended Provider Direction
 
-### Recommended primary no-spend hosted path: Gemini free tier direct
+### Standardized transport layer
+
+The codebase now uses an OpenAI-compatible chat-completions surface to normalize local and remote model calls. That gives the same request shape for Ollama-backed local review and any future compatible hosted endpoint.
+
+### Recommended primary local Stage 2 path: `qwen3-vl:4b` through Ollama
 
 Reasoning:
 
-1. It aligns with the no-spend goal better than additional hosted providers.
-2. It still gives hosted multimodal quality, which is likely stronger than small local models on subtle visual review.
-3. It supports structured JSON output and multimodal input, which fit the evaluator-facing schema constraints.
+1. It is the current local multimodal default for Stage 2 and matches the implemented judge setup path.
+2. It keeps the local path deterministic and easy to reproduce on a fresh machine.
+3. It is the model the pipeline already wires into the dedicated Stage 2 slot when available.
+4. It should be benchmarked, not assumed to outperform a stronger hosted reviewer on subtle image grounding.
 
-### Recommended local no-API baseline: Gemma 4 E4B through Ollama
-
-Reasoning:
-
-1. It is realistic on laptop-class hardware.
-2. Ollama gives the simplest macOS/Linux setup and model download flow.
-3. It provides an offline fallback and benchmark without API dependency.
-4. It should be benchmarked, not assumed to beat the hosted path on evaluator-facing accuracy.
-
-### Recommended escalation path: Gemini hosted re-review
+### Recommended hosted escalation path: Gemini hosted re-review
 
 Reasoning:
 
-1. The user will use Gemini through a Google account, primarily on free-tier quota.
-2. Hosted Gemini quality is expected to beat the local fallback on subtle visual evidence review.
-3. Stage 3 remains conditional and should not run on every row by default.
-4. If quota is exhausted, Stage 3 must disable cleanly or fall back to the local path.
-
-### Recommended not to use as the main no-spend path: OpenRouter free router
-
-Reasoning:
-
-1. Free-router variance hurts reproducibility.
-2. Free request caps are a poor fit for repeated evaluation and reruns.
-3. Fixed-model OpenRouter usage can still be useful for benchmarking, but not as the main final-path assumption.
+1. It remains the conditional high-confidence hosted path for hard rows.
+2. It can be gated behind confidence and risk signals so it does not run on every row.
+3. If quota is exhausted, Stage 3 must disable cleanly or fall back to the local path.
 
 ## Locked Provider Strategy
 
-1. Primary Stage 2 hosted path:
-   `Gemini free tier direct`.
-2. Local baseline and fallback:
+1. Primary Stage 2 local path:
    `Ollama` running `qwen3-vl:4b`.
-3. Stage 3 conditional escalation:
-   use `Gemini hosted re-review` with the same Google provider path; do not implement OpenAI.
+2. Stage 3 conditional escalation:
+   Gemini hosted re-review on flagged hard rows only.
+3. Transport standardization:
+   use the OpenAI-compatible chat-completions shape for local and remote chat-completions endpoints where applicable.
 4. Local `qwen3-vl:4b` role:
-   benchmark and fallback only, not the first-class default main path.
-5. Stage 3 gate policy:
-   `balanced gates`.
-6. Stage 3 budget policy:
+   first-class local reviewer and benchmark/fallback.
+5. Stage 3 budget policy:
    `zero direct paid spend by default`; report quota usage and disable escalation if free quota is unavailable.
-7. Initial provider implementation scope:
-   `Gemini + Ollama qwen3-vl:4b + mock adapter`.
-8. Do not implement OpenAI or Anthropic unless the user explicitly changes the provider scope.
+6. Initial provider implementation scope:
+   `Gemini + Ollama qwen3-vl:4b + OpenAI-compatible adapter + mock adapter`.
+7. Do not add a separate third-party router as a required dependency unless future evaluation demonstrates a benefit.
 
 ## Recommended Model Stack
 
 ### No-spend primary path
 
 1. Claim parser:
-   Gemini through the Google Gen AI SDK, using structured JSON output.
+   the configured base adapter with structured JSON output enforced by the prompt harness.
 2. Primary per-image reviewer:
-   `Gemini free tier` direct.
-3. Optional local-only baseline:
    `Ollama` with `qwen3-vl:4b`.
+3. Optional hosted rerun:
+   Gemini only when Stage 3 gates trigger.
 
 ### Conditional escalation path
 
@@ -378,15 +369,14 @@ Choose providers and models using these rules in order:
 
 ## Confirmed Execution Decisions
 
-1. Use `Gemini free tier direct` as the primary no-spend hosted path.
-2. Use `Ollama` with `qwen3-vl:4b` as the local offline baseline and fallback.
-3. Keep hosted re-review only as `Stage 3 escalation`, not as a full-dataset default.
-4. Use Gemini as the only hosted provider unless the user later changes direction.
-5. Treat free quota and no direct API spend as constraints; report quota usage in the operational analysis.
-6. Enable OCR and classical image preprocessing only as supporting signals.
-7. Fix the implementation to Python with `pydantic` and `pytest`.
-8. Freeze one best production path, keeping automatic escalation only if evaluation proves it helps.
-9. Exclude large experiment and cache artifacts from version control.
+1. Use `Ollama` with `qwen3-vl:4b` as the local offline baseline and Stage 2 default.
+2. Keep hosted re-review only as `Stage 3 escalation`, not as a full-dataset default.
+3. Use the OpenAI-compatible adapter to standardize local and remote chat-completions traffic.
+4. Treat free quota and no direct API spend as constraints; report quota usage in the operational analysis.
+5. Enable OCR and classical image preprocessing only as supporting signals.
+6. Fix the implementation to Python with `pydantic` and `pytest`.
+7. Freeze one best production path, keeping automatic escalation only if evaluation proves it helps.
+8. Exclude large experiment and cache artifacts from version control.
 
 ## Local Runtime Decision
 
@@ -394,7 +384,7 @@ The local runtime is locked to `Ollama` with model `qwen3-vl:4b`.
 
 Implementation rules:
 
-1. Use Ollama only as a local benchmark/fallback unless evaluation shows it beats Gemini on a specific slice.
+1. Use Ollama as the first-class local reviewer and benchmark/fallback unless evaluation shows a different local model is better on a specific slice.
 2. Include setup commands in `README.md`, `code/README.md`, and `AGENTS.md`.
 3. The setup command must download `qwen3-vl:4b` during setup with `ollama pull qwen3-vl:4b`.
 4. Local model weights, Ollama caches, and generated provider caches must not be included in `code.zip`.

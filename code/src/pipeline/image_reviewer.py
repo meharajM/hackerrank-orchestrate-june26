@@ -139,8 +139,7 @@ def review_image(
         if (
             "blurry_image" in merged_quality
             or "damage_not_visible" in merged_quality
-            or not object_visible
-            or part_seen == "unknown"
+            or (not object_visible and object_type_seen == "unknown")
         ):
             is_usable = False
 
